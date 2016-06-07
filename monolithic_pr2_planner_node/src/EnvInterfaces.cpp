@@ -44,10 +44,13 @@ EnvInterfaces::EnvInterfaces(
   m_ara_planner.reset(new ARAPlanner(m_env.get(), forward_search));
   m_mha_planner.reset(new MHAPlanner(m_env.get(), NUM_SMHA_HEUR,
                                      forward_search));
-  m_costmap_pub = m_nodehandle.advertise<nav_msgs::OccupancyGrid>("costmap_pub",
-                                                                  1);
-  m_costmap_publisher.reset(new
-                            costmap_2d::Costmap2DPublisher(m_nodehandle, 1, "/map"));
+  //m_costmap_pub = m_nodehandle.advertise<nav_msgs::OccupancyGrid>("costmap_pub",
+  //                                                                 1);
+  //m_costmap_publisher.reset(new
+   //                         costmap_2d::Costmap2DPublisher(m_nodehandle, 1, "/map"));
+  costmap_2d::Costmap2D temp_costmap;
+  m_costmap_publisher.reset(new costmap_2d::Costmap2DPublisher(&m_nodehandle,  &temp_costmap,
+                                                               "/map", "costmap_pub", false )); //XXX Should the last parameter be True?
 
   interrupt_sub_ = nh.subscribe("/sbpl_planning/interrupt", 1,
                                 &EnvInterfaces::interruptPlannerCallback, this);
@@ -747,8 +750,8 @@ void EnvInterfaces::loadNavMap(const nav_msgs::OccupancyGridPtr &map) {
 
   // Get the underlying costmap in the cost_map object.
   // Publish for visualization. Publishing is done for the entire (uncropped) costmap.
-  costmap_2d::Costmap2D cost_map;
-  m_costmap_ros->getCostmapCopy(cost_map);
+  costmap_2d::Costmap2D cost_map(*(m_costmap_ros->getCostmap()));
+  //cost_map = m_costmap_ros->getCostmapCopy(cost_map);
 
   // Normalize and convert to array.
   for (unsigned int j = 0; j < cost_map.getSizeInCellsY(); ++j) {

@@ -83,7 +83,7 @@ add_dependencies(interactFullBodyPlanner ${catkin_EXPORTED_TARGETS})
 target_link_libraries(interactFullBodyPlanner monolithic_pr2_planner sbpl_manipulation_components_pr2 pviz ${catkin_LIBRARIES} ${ompl_LIBRARIES})
 
 add_executable(testExecute src/testExecute.cpp)
-add_dependencies(testExecute ${catkin_EXPORTED_TARGETS})
+add_dependencies(testExecute ${catkin_EXPORTED_TARGETS} leatherman)
 # TODO I don't know why I have to list the packages explicitly.
 target_link_libraries(testExecute monolithic_pr2_planner sbpl_manipulation_components sbpl_manipulation_components_pr2 pviz pr2_collision_checker bfs3d ikfast_pr2 )
 
