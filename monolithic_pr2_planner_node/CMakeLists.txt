@@ -7,12 +7,13 @@ project(monolithic_pr2_planner_node)
 # Load catkin and all dependencies required for this package
 # TODO: remove all from COMPONENTS that are not catkin packages.
 #find_package(ompl REQUIRED)
-find_package(catkin REQUIRED COMPONENTS roscpp geometry_msgs monolithic_pr2_planner leatherman pcl_ros orocos_kdl geometry_msgs sensor_msgs arm_navigation_msgs costmap_2d
-                             sbpl_manipulation_components_pr2 interactive_markers sbpl_mha message_generation pviz tf2)
+find_package(catkin REQUIRED COMPONENTS roscpp geometry_msgs monolithic_pr2_planner leatherman pcl_ros orocos_kdl geometry_msgs sensor_msgs arm_navigation_msgs costmap_2d sbpl_manipulation_components_pr2 interactive_markers sbpl message_generation pviz tf2)
+#find_package(sbpl_mha)
 
 #uncomment if you have defined services
 add_service_files(
-  DIRECTORY srv  
+  DIRECTORY srv 
+  FILES GetMobileArmPlan.srv
 # TODO: List your msg files here
 )
 
@@ -26,7 +27,7 @@ generate_messages(
 catkin_package(
     DEPENDS roscpp geometry_msgs costmap_2d sbpl_manipulation_components_pr2 interactive_markers
             tf2
-    CATKIN_DEPENDS message_runtime pviz sbpl_manipulation_components_pr2 monolithic_pr2_planner leatherman pcl_ros orocos_kdl geometry_msgs sensor_msgs arm_navigation_msgs sbpl_mha # TODO
+    CATKIN_DEPENDS message_runtime pviz sbpl_manipulation_components_pr2 monolithic_pr2_planner leatherman pcl_ros orocos_kdl geometry_msgs sensor_msgs arm_navigation_msgs sbpl # sbpl_mha # TODO
     INCLUDE_DIRS include ${catkin_INCLUDE_DIRS} ${ompl_INCLUDE_DIRS}# TODO include
     LIBRARIES ${catkin_LIBRARIES} ${ompl_LIBRARIES} # TODO
 )
@@ -53,7 +54,9 @@ SET(CMAKE_CXX_FLAGS "-std=c++0x")
 
 # find_package(Boost 1.46.0 COMPONENTS thread system filesystem REQUIRED)
 find_package(PkgConfig REQUIRED)
-pkg_check_modules(ompl REQUIRED ompl)
+find_package(ompl REQUIRED)
+#pkg_check_modules(ompl REQUIRED ompl)
+
 include_directories(${ompl_INCLUDE_DIRS})
 link_directories(${ompl_LIBRARY_DIRS})
 
@@ -72,13 +75,15 @@ add_executable(node src/node.cpp src/EnvInterfaces.cpp #(Not required for simula
                         )
 
 # TODO I don't know why I have to list the packages explicitly.
-target_link_libraries(node monolithic_pr2_planner bfs3d ompl ikfast_pr2 sbpl_manipulation_components_pr2 pviz ompl pr2_collision_checker ${catkin_LIBRARIES} ${ompl_LIBRARIES})
+target_link_libraries(node monolithic_pr2_planner bfs3d ikfast_pr2 sbpl_manipulation_components_pr2 pviz pr2_collision_checker ${catkin_LIBRARIES} ${ompl_LIBRARIES} ompl_app_base ompl)
 
 add_executable(testPlanningRequest src/testPlanningRequest.cpp)
 target_link_libraries(testPlanningRequest monolithic_pr2_planner)
 
 add_executable(interactFullBodyPlanner src/interactFullBodyPlanner.cpp)
-add_dependencies(interactFullBodyPlanner ${catkin_EXPORTED_TARGETS})
+#add_dependencies(interactFullBodyPlanner ${catkin_EXPORTED_TARGETS})
+#add_dependencies(interactFullBodyPlanner interactFullBodyPlanner_gencpp)
+
 # TODO I don't know why I have to list the packages explicitly.
 target_link_libraries(interactFullBodyPlanner monolithic_pr2_planner sbpl_manipulation_components_pr2 pviz ${catkin_LIBRARIES} ${ompl_LIBRARIES})
 
@@ -97,7 +102,7 @@ add_executable(run_sim_file src/runSimulationFromFile.cpp)
 target_link_libraries(run_sim_file monolithic_pr2_planner)
 
 add_executable(run_demo src/run_demo.cpp)
-target_link_libraries(run_demo monolithic_pr2_planner)
+target_link_libraries(run_demo monolithic_pr2_planner ${ompl_LIBRARIES} ompl_app_base)
 
 add_executable(runTests src/run_tests.cpp)
 target_link_libraries(runTests monolithic_pr2_planner)

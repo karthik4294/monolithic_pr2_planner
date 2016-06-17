@@ -28,7 +28,8 @@
   <build_depend>sbpl_manipulation_components</build_depend>
   <build_depend>sbpl_manipulation_components_pr2</build_depend>
   <build_depend>interactive_markers</build_depend>
-  <build_depend>sbpl_mha</build_depend>
+  <!--<build_depend>sbpl_mha</build_depend>-->
+  <build_depend>sbpl</build_depend>
   <build_depend>pviz</build_depend>
   <build_depend>tf2</build_depend>
 
@@ -48,7 +49,8 @@
   <run_depend>sbpl_manipulation_components</run_depend>
   <run_depend>sbpl_manipulation_components_pr2</run_depend>
   <run_depend>interactive_markers</run_depend>
-  <run_depend>sbpl_mha</run_depend>
+  <!--<run_depend>sbpl_mha</run_depend>-->
+  <run_depend>sbpl</run_depend>
   <run_depend>pviz</run_depend>
   <run_depend>tf2</run_depend>
 

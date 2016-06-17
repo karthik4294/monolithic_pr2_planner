@@ -4,16 +4,16 @@ cmake_minimum_required(VERSION 2.8.3)
 project(monolithic_pr2_planner)
 # Load catkin and all dependencies required for this package
 # TODO: remove all from COMPONENTS that are not catkin packages.
-find_package(catkin REQUIRED COMPONENTS pr2_collision_checker angles pviz bfs3d ikfast_pr2 nav_msgs moveit_msgs costmap_2d sbpl_mha rostest)
-#find_package(sbpl)
+find_package(catkin REQUIRED COMPONENTS pr2_collision_checker angles pviz bfs3d ikfast_pr2 nav_msgs moveit_msgs costmap_2d sbpl rostest)
+#find_package(sbpl_mha)
 # CATKIN_MIGRATION: removed during catkin migration
 
 # catkin_package parameters: http://ros.org/doc/groovy/api/catkin/html/dev_guide/generated_cmake_api.html#catkin-package
 # TODO: fill in what other packages will need to use this package
 catkin_package(
     DEPENDS pr2_collision_checker angles pviz bfs3d ikfast_pr2 nav_msgs moveit_msgs costmap_2d rostest
-    CATKIN_DEPENDS sbpl_mha # TODO
-    INCLUDE_DIRS include ${catkin_INCLUDE_DIRS} ${sbpl_mha}#${sbpl_INCLUDE_DIRS}# TODO include
+    CATKIN_DEPENDS sbpl #sbpl_mha # TODO
+    INCLUDE_DIRS include ${catkin_INCLUDE_DIRS} ${sbpl} #${sbpl_mha} #${sbpl_INCLUDE_DIRS}# TODO include
     LIBRARIES ${catkin_LIBRARIES}# TODO
 )
 
@@ -97,6 +97,7 @@ add_library(monolithic_pr2_planner src/StateReps/RobotState.cpp
 
                                             src/SearchRequest.cpp
                                             src/Environment.cpp
+                                            src/EnvironmentMonolithic.cpp
                                             src/OccupancyGridUser.cpp
                                             src/CollisionSpaceMgr.cpp
                                             src/ParameterCatalog.cpp
