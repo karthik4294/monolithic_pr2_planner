@@ -98,9 +98,9 @@ void ControlPlanner::processFeedback(const visualization_msgs::InteractiveMarker
         req.meta_search_type = mha_planner::MetaSearchType::ROUND_ROBIN;
 
       if(feedback->menu_entry_id == MenuItems::PLAN_HSTAR)
-        req.planner_type = 0;
+        req.planner_type = static_cast<monolithic_pr2_planner_node::GetMobileArmPlanRequest_<std::allocator<void> >::_planner_type_type>(ppma_planner::PlannerMode::H_STAR);
       if(feedback->menu_entry_id == MenuItems::PLAN_WASTAR)
-        req.planner_type = 1;
+        req.planner_type = static_cast<monolithic_pr2_planner_node::GetMobileArmPlanRequest_<std::allocator<void> >::_planner_type_type>(ppma_planner::PlannerMode::wA_STAR);
 
       //position of the wrist in the object's frame
       req.rarm_object.pose.position.x = 0;

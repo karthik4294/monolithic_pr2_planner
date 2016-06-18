@@ -141,7 +141,7 @@ namespace monolithic_pr2_planner_node {
             StatsWriter m_stats_writer;
 
             //PPMA
-            ReplanParams ppma_replan_params;
+            PPMAReplanParams ppma_replan_params;
             ompl::base::SpaceInformationPtr si_;
             ompl::base::StateSpacePtr fullBodySpace;
             omplFullBodyCollisionChecker* m_collision_checker;

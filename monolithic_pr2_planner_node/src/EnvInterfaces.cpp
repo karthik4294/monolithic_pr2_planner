@@ -387,14 +387,14 @@ bool EnvInterfaces::experimentCallback(GetMobileArmPlan::Request &req,
       } else {
         // Here starts the actual planning requests
         start_goal.first.visualize();
-        if(!use_ppma){
+        if(req.planner_type == mha_planner::PlannerType::SMHA || req.planner_type == mha_planner::PlannerType::IMHA){
           runMHAPlanner(monolithic_pr2_planner::T_SMHA, "smha_", req, res,
                       search_request, counter);
           runMHAPlanner(monolithic_pr2_planner::T_IMHA, "imha_", req, res,
                       search_request, counter);
         }else{
 
-          runPPMAPlanner(monolithic_pr2_planner::T_IMHA, "imha_", req, res,
+          runPPMAPlanner(monolithic_pr2_planner::T_IMHA, "ppma", req, res,
                       search_request, counter);
         }
         // Write env if the whole thing didn't crash.
@@ -606,6 +606,9 @@ bool EnvInterfaces::runPPMAPlanner(int planner_type,
   m_mon_env->reset();
   m_mon_env->setPlannerType(planner_type);
   m_mon_env->setUseNewHeuristics(use_new_heuristics);
+
+  ppma_replan_params.planner_mode = static_cast<ppma_planner::PlannerMode>(req.planner_type);
+
   m_ppma_planner.reset(new PPMAPlanner(si_, m_mon_env.get(), forward_search, allocated_time_secs, &ppma_replan_params));
   m_ppma_planner->setProblemDefinition(ompl::base::ProblemDefinitionPtr(pdef_));
 
@@ -630,57 +633,55 @@ bool EnvInterfaces::runPPMAPlanner(int planner_type,
     return true;
   }
 
-  //transform start quat to rpy
-  tf::Quaternion qs(req.start.pose.orientation.x, req.start.pose.orientation.y, req.start.pose.orientation.z, req.start.pose.orientation.w);
-  tf::Matrix3x3 ms(qs);
-  double start_roll, start_pitch, start_yaw;
-  ms.getRPY(start_roll, start_pitch, start_yaw);
+  LeftContArmState left_arm_start = search_request->left_arm_start;
+  RightContArmState right_arm_start = search_request->right_arm_start;
+  ContBaseState base_start = search_request->base_start;
+  ContObjectState obj_state = right_arm_start.getObjectStateRelBody();
   
   //set start
   ompl::base::StateSpacePtr space(m_ppma_planner->getSpaceInformation()->getStateSpace());
   ompl::base::CompoundState *ompl_start = dynamic_cast<ompl::base::CompoundState*> (space->allocState());
 
-  ompl_start->as<VectorState>(0)->values[0] = req.start.pose.position.x;
-  ompl_start->as<VectorState>(0)->values[1] = req.start.pose.position.y;
-  ompl_start->as<VectorState>(0)->values[2] = req.start.pose.position.z;
-  ompl_start->as<VectorState>(0)->values[3] = start_roll;
-  ompl_start->as<VectorState>(0)->values[4] = start_pitch;
-  ompl_start->as<VectorState>(0)->values[5] = start_yaw;
-  ompl_start->as<VectorState>(0)->values[6] = req.rarm_start[2];
-  ompl_start->as<VectorState>(0)->values[7] = req.larm_start[2];
-  ompl_start->as<VectorState>(0)->values[8] = req.body_start[2];
+  ompl_start->as<VectorState>(0)->values[0] = obj_state.x();
+  ompl_start->as<VectorState>(0)->values[1] = obj_state.y();
+  ompl_start->as<VectorState>(0)->values[2] = obj_state.z();
+  ompl_start->as<VectorState>(0)->values[3] = obj_state.roll();
+  ompl_start->as<VectorState>(0)->values[4] = obj_state.pitch();
+  ompl_start->as<VectorState>(0)->values[5] = obj_state.yaw();
+  ompl_start->as<VectorState>(0)->values[6] = right_arm_start.getUpperArmRollAngle();
+  ompl_start->as<VectorState>(0)->values[7] = left_arm_start.getUpperArmRollAngle();
+  ompl_start->as<VectorState>(0)->values[8] = base_start.z();
 
-  ompl_start->as<SE2State>(1)->setX(req.body_start[0]);
-  ompl_start->as<SE2State>(1)->setY(req.body_start[1]);
-  ompl_start->as<SE2State>(1)->setYaw(req.body_start[3]);
+  ompl_start->as<SE2State>(1)->setX(base_start.x());
+  ompl_start->as<SE2State>(1)->setY(base_start.y());
+  ompl_start->as<SE2State>(1)->setYaw(angles::normalize_angle(base_start.theta()));
 
   if(m_ppma_planner->getSpaceInformation()->isValid(ompl_start))
     ROS_INFO("[ompl] Start state is valid.");
   else
     ROS_ERROR("[ompl] Start state is NOT valid.");
 
-  //transform goal quat to rpy
-  tf::Quaternion qg(req.goal.pose.orientation.x, req.goal.pose.orientation.y, req.goal.pose.orientation.z, req.goal.pose.orientation.w);
-  tf::Matrix3x3 mg(qg);
-  double goal_roll, goal_pitch, goal_yaw;
-  mg.getRPY(goal_roll, goal_pitch, goal_yaw);
+  LeftContArmState left_arm_goal = search_request->left_arm_goal;
+  RightContArmState right_arm_goal = search_request->right_arm_goal;
+  ContBaseState base_goal = search_request->base_goal;
+  ContObjectState goal_obj_state = right_arm_goal.getObjectStateRelBody();
 
   //set goal
   ompl::base::CompoundState *ompl_goal = dynamic_cast<ompl::base::CompoundState*> (space->allocState());
 
-  ompl_goal->as<VectorState>(0)->values[0] = req.goal.pose.position.x;
-  ompl_goal->as<VectorState>(0)->values[1] = req.goal.pose.position.y;
-  ompl_goal->as<VectorState>(0)->values[2] = req.goal.pose.position.z;
-  ompl_goal->as<VectorState>(0)->values[3] = goal_roll;
-  ompl_goal->as<VectorState>(0)->values[4] = goal_pitch;
-  ompl_goal->as<VectorState>(0)->values[5] = goal_yaw;
-  ompl_goal->as<VectorState>(0)->values[6] = req.rarm_goal[2];
-  ompl_goal->as<VectorState>(0)->values[7] = req.larm_goal[2];
-  ompl_goal->as<VectorState>(0)->values[8] = req.body_goal[2];
+  ompl_goal->as<VectorState>(0)->values[0] = goal_obj_state.x();
+  ompl_goal->as<VectorState>(0)->values[1] = goal_obj_state.y();
+  ompl_goal->as<VectorState>(0)->values[2] = goal_obj_state.z();
+  ompl_goal->as<VectorState>(0)->values[3] = goal_obj_state.roll();
+  ompl_goal->as<VectorState>(0)->values[4] = goal_obj_state.pitch();
+  ompl_goal->as<VectorState>(0)->values[5] = goal_obj_state.yaw();
+  ompl_goal->as<VectorState>(0)->values[6] = right_arm_goal.getUpperArmRollAngle();
+  ompl_goal->as<VectorState>(0)->values[7] = left_arm_goal.getUpperArmRollAngle();
+  ompl_goal->as<VectorState>(0)->values[8] = base_goal.z();
 
-  ompl_goal->as<SE2State>(1)->setX(req.body_goal[0]);
-  ompl_goal->as<SE2State>(1)->setY(req.body_goal[1]);
-  ompl_goal->as<SE2State>(1)->setYaw(req.body_goal[3]);
+  ompl_goal->as<SE2State>(1)->setX(base_goal.x());
+  ompl_goal->as<SE2State>(1)->setY(base_goal.y());
+  ompl_goal->as<SE2State>(1)->setYaw(angles::normalize_angle(base_goal.theta()));
 
   if(m_ppma_planner->getSpaceInformation()->isValid(ompl_goal))
     ROS_INFO("[ompl] Goal state is valid.");
@@ -846,12 +847,12 @@ bool EnvInterfaces::planPathCallback(GetMobileArmPlan::Request &req,
 
   double total_planning_time = clock();
   bool forward_search = true;
-  if(!use_ppma){
+  if(req.planner_type == mha_planner::PlannerType::SMHA){
     isPlanFound = runMHAPlanner(monolithic_pr2_planner::T_SMHA, "smha_", req, res,
                               search_request, counter);
   }else{
 
-    isPlanFound = runPPMAPlanner(monolithic_pr2_planner::T_SMHA, "smha_", req, res,
+    isPlanFound = runPPMAPlanner(monolithic_pr2_planner::T_SMHA, "ppma", req, res,
                               search_request, counter);
   }
   counter++;
@@ -917,12 +918,12 @@ bool EnvInterfaces::demoCallback(GetMobileArmPlan::Request &req,
   bool isPlanFound;
 
   bool forward_search = true;
-  if(!use_ppma){
+  if(req.planner_type == mha_planner::PlannerType::SMHA){
     isPlanFound = runMHAPlanner(monolithic_pr2_planner::T_SMHA, "smha_", req, res,
                               search_request, counter);
   }else{
 
-    isPlanFound = runPPMAPlanner(monolithic_pr2_planner::T_SMHA, "smha_", req, res,
+    isPlanFound = runPPMAPlanner(monolithic_pr2_planner::T_SMHA, "ppma", req, res,
                               search_request, counter);
   }
 

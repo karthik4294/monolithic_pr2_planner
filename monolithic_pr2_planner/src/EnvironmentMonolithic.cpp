@@ -681,8 +681,8 @@ void EnvironmentMonolithic::GetNearestLatticeState(const ompl::base::State *cont
     ROS_ERROR("ik failed for visualization!");
   }
 
-  GraphStatePtr continous_graph_state;
-  continous_graph_state->robot_pose(continous_robot_state);
+  GraphStatePtr continous_graph_state = make_shared<GraphState>(continous_robot_state);
+  //continous_graph_state->robot_pose(continous_robot_state);
   m_hash_mgr->save(continous_graph_state);
   *nearest_lattice_state_id = continous_graph_state->id();
 
