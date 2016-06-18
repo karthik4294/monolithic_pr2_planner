@@ -603,7 +603,7 @@ bool EnvInterfaces::runPPMAPlanner(int planner_type,
 
   printf("\n");
   ROS_INFO("Initialize environment");
-  m_mon_env->reset();
+  m_mon_env->reset(si_);
   m_mon_env->setPlannerType(planner_type);
   m_mon_env->setUseNewHeuristics(use_new_heuristics);
 

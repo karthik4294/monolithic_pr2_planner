@@ -31,11 +31,13 @@ EnvironmentMonolithic::EnvironmentMonolithic(ros::NodeHandle nh)
  * @details Intended to be used between calls to subsequent planning
  * requests.
  */
-void EnvironmentMonolithic::reset() {
+void EnvironmentMonolithic::reset(const ompl::base::SpaceInformationPtr si) {
     m_heur_mgr->reset();
     // m_heur_mgr->setCollisionSpaceMgr(m_cspace_mgr);
     m_hash_mgr.reset(new HashManager(&StateID2IndexMapping));
     m_edges.clear();
+
+    si_ = si;
 
     // Fetch params again, in case they're being modified between calls.
     // m_param_catalog.fetch(m_nodehandle);
@@ -376,8 +378,22 @@ void EnvironmentMonolithic::GetSuccs(int q_id, int sourceStateID, vector<int>* s
             } else {
                 succIDs->push_back(successor->id());
             }
-            costs->push_back(mprim->cost());
-            ROS_DEBUG_NAMED(SEARCH_LOG, "motion succeeded with cost %d", mprim->cost());
+
+            //costs->push_back(mprim->cost());
+            
+            //**SBPL motions get cost from OMPL continuous cost to make it uniform//
+            ompl::base::State* source_state = si_->allocState();
+            ompl::base::State* succ_state = si_->allocState();;
+            int cont_cost;
+
+            GetContState(sourceStateID, source_state);
+            GetContState(successor->id(), succ_state);
+
+            cont_cost = GetContEdgeCost(source_state, succ_state);
+
+            costs->push_back(cont_cost);
+            
+            ROS_DEBUG_NAMED(SEARCH_LOG, "motion succeeded with cost %d", cont_cost);
         } else {
             //successor->robot_pose().visualize();
             ROS_DEBUG_NAMED(SEARCH_LOG, "successor failed collision checking");

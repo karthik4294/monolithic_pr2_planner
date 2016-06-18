@@ -63,7 +63,7 @@ namespace monolithic_pr2_planner {
             int GetTrueCost(int parentID, int childID);
             std::vector<FullBodyState> reconstructPath(std::vector<int> 
                 state_ids);
-            void reset();
+            void reset(const ompl::base::SpaceInformationPtr);
             void setPlannerType(int planner_type);
             void setUseNewHeuristics(bool use_new_heuristics){m_use_new_heuristics = use_new_heuristics;};
 
@@ -97,6 +97,8 @@ namespace monolithic_pr2_planner {
 
             int m_planner_type;
             bool m_use_new_heuristics;
+
+            ompl::base::SpaceInformationPtr si_;
 
         // SBPL interface stuff
         public:
