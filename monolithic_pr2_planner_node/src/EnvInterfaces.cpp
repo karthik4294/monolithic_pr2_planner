@@ -19,6 +19,8 @@ using namespace boost;
 using namespace std;
 using namespace KDL;
 
+
+bool use_ppma = true;
 // constructor automatically launches the collision space interface, which only
 // loads it up with a pointer to the collision space mgr. it doesn't bind to any
 // topic.
@@ -29,7 +31,8 @@ EnvInterfaces::EnvInterfaces(
   m_nodehandle(nh),
   m_env(env), m_collision_space_interface(new CollisionSpaceInterface(
                                             env->getCollisionSpace(), env->getHeuristicMgr())),
-  m_generator(new StartGoalGenerator(env->getCollisionSpace()))
+  m_generator(new StartGoalGenerator(env->getCollisionSpace())),
+  ppma_replan_params(30.0)
   // m_rrt(new OMPLPR2Planner(env->getCollisionSpace(), RRT)),
   // m_prm(new OMPLPR2Planner(env->getCollisionSpace(), PRM_P)),
   // m_rrtstar(new OMPLPR2Planner(env->getCollisionSpace(), RRTSTAR)),
@@ -41,7 +44,9 @@ EnvInterfaces::EnvInterfaces(
 
   getParams();
   bool forward_search = true;
+
   m_ara_planner.reset(new ARAPlanner(m_env.get(), forward_search));
+  
   m_mha_planner.reset(new MHAPlanner(m_env.get(), NUM_SMHA_HEUR,
                                      forward_search));
   m_costmap_pub = m_nodehandle.advertise<nav_msgs::OccupancyGrid>("costmap_pub",
@@ -53,8 +58,117 @@ EnvInterfaces::EnvInterfaces(
                                 &EnvInterfaces::interruptPlannerCallback, this);
 }
 
+EnvInterfaces::EnvInterfaces(
+  boost::shared_ptr<monolithic_pr2_planner::EnvironmentMonolithic> env,
+  ros::NodeHandle nh) :
+  m_nodehandle(nh),
+  m_mon_env(env), m_collision_space_interface(new CollisionSpaceInterface(
+                                            env->getCollisionSpace(), env->getHeuristicMgr())),
+  m_generator(new StartGoalGenerator(env->getCollisionSpace())),
+  ppma_replan_params(30.0)
+  // m_rrt(new OMPLPR2Planner(env->getCollisionSpace(), RRT)),
+  // m_prm(new OMPLPR2Planner(env->getCollisionSpace(), PRM_P)),
+  // m_rrtstar(new OMPLPR2Planner(env->getCollisionSpace(), RRTSTAR)),
+  // m_rrtstar_first_sol(new OMPLPR2Planner(env->getCollisionSpace(),
+  // RRTSTARFIRSTSOL))
+{
+
+  m_collision_space_interface->mutex = &mutex;
+
+  getParams();
+  bool forward_search = true;
+  double allocated_time_secs = 30.0;
+
+  ppma_replan_params.initial_eps = 100.0;
+  ppma_replan_params.final_eps = 100.0;
+  ppma_replan_params.return_first_solution = false;
+
+  //Setup ompl spaceinformation for hstar
+  ompl_spi_init(env->getCollisionSpace());
+
+  m_ppma_planner.reset(new PPMAPlanner(si_, m_mon_env.get(), forward_search, allocated_time_secs, &ppma_replan_params));
+  m_ppma_planner->setProblemDefinition(ompl::base::ProblemDefinitionPtr(pdef_));
+  
+  m_costmap_pub = m_nodehandle.advertise<nav_msgs::OccupancyGrid>("costmap_pub",
+                                                                  1);
+  m_costmap_publisher.reset(new
+                            costmap_2d::Costmap2DPublisher(m_nodehandle, 1, "/map"));
+
+  interrupt_sub_ = nh.subscribe("/sbpl_planning/interrupt", 1,
+                                &EnvInterfaces::interruptPlannerCallback, this);
+}
+
+void EnvInterfaces::ompl_spi_init(const monolithic_pr2_planner::CSpaceMgrPtr& cspace) {
+    //ROS_INFO("initializing OMPL");
+    ompl::base::SE2StateSpace* se2 = new ompl::base::SE2StateSpace();
+    ompl::base::RealVectorBounds base_bounds(2);
+    base_bounds.setLow(0,0);
+    base_bounds.setHigh(0,10);//3
+    base_bounds.setLow(1,0);
+    base_bounds.setHigh(1,6);//3
+    se2->setBounds(base_bounds);
+    ompl::base::RealVectorStateSpace* r7 = new ompl::base::RealVectorStateSpace(9);
+    r7->setDimensionName(0,"arms_x");
+    r7->setDimensionName(1,"arms_y");
+    r7->setDimensionName(2,"arms_z");
+    r7->setDimensionName(3,"arms_roll");
+    r7->setDimensionName(4,"arms_pitch");
+    r7->setDimensionName(5,"arms_yaw");
+    r7->setDimensionName(6,"free_angle_right");
+    r7->setDimensionName(7,"free_angle_left");
+    r7->setDimensionName(8,"torso");
+    ompl::base::RealVectorBounds bounds(9);
+    bounds.setLow(0,0.35);//arms_x
+    bounds.setHigh(0,1.2);//arms_x
+    bounds.setLow(1,-0.6);//arms_y
+    bounds.setHigh(1,0.6);//arms_y
+    bounds.setLow(2,-0.6);//arms_z
+    bounds.setHigh(2,0.6);//arms_z
+
+    // TODO may need to fix this!
+    bounds.setLow(3,0);//arms_roll
+    bounds.setHigh(3,2*M_PI);//arms_roll
+    bounds.setLow(4,0);//arms_pitch
+    bounds.setHigh(4,2*M_PI);//arms_pitch
+    bounds.setLow(5,0);//arms_yaw
+    bounds.setHigh(5,2*M_PI);//arms_yaw
+    bounds.setLow(6,-3.75);//fa_right
+    bounds.setHigh(6,0.65);//fa_right
+    bounds.setLow(7,-0.65);//fa_left
+    bounds.setHigh(7,3.75);//fa_left
+    bounds.setLow(8,0); //torso
+    bounds.setHigh(8,0.30); //torso
+    r7->setBounds(bounds);
+    ompl::base::StateSpacePtr se2_p(se2);
+    ompl::base::StateSpacePtr r7_p(r7);
+    fullBodySpace = r7_p + se2_p;
+    
+    //Define our SpaceInformation (combines the state space and collision checker)
+    si_.reset(new ompl::base::SpaceInformation(fullBodySpace));
+
+    vector<double> init_l_arm(7,0);
+    init_l_arm[0] = (0.038946287971107774);
+    init_l_arm[1] = (1.2146697069025374);
+    init_l_arm[2] = (1.3963556492780154);
+    init_l_arm[3] = -1.1972269899800325;
+    init_l_arm[4] = (-4.616317135720829);
+    init_l_arm[5] = -0.9887266887318599;
+    init_l_arm[6] = 1.1755681069775656;
+
+    m_collision_checker = new omplFullBodyCollisionChecker(si_);
+    m_collision_checker->initialize(cspace, init_l_arm);
+
+    ompl::base::StateValidityChecker* temp2 = m_collision_checker;
+    si_->setStateValidityChecker(ompl::base::StateValidityCheckerPtr(temp2));
+    si_->setStateValidityCheckingResolution(0.002/si_->getMaximumExtent());
+    si_->setup();
+
+    pdef_.reset(new ompl::base::ProblemDefinition(si_));
+
+}
+
 void EnvInterfaces::interruptPlannerCallback(std_msgs::EmptyConstPtr) {
-  ROS_WARN("Planner interrupt received!");
+  ROS_INFO("Planner interrupt received!");
   m_mha_planner->interrupt();
 }
 
@@ -273,11 +387,16 @@ bool EnvInterfaces::experimentCallback(GetMobileArmPlan::Request &req,
       } else {
         // Here starts the actual planning requests
         start_goal.first.visualize();
-        runMHAPlanner(monolithic_pr2_planner::T_SMHA, "smha_", req, res,
+        if(!use_ppma){
+          runMHAPlanner(monolithic_pr2_planner::T_SMHA, "smha_", req, res,
                       search_request, counter);
-        runMHAPlanner(monolithic_pr2_planner::T_IMHA, "imha_", req, res,
+          runMHAPlanner(monolithic_pr2_planner::T_IMHA, "imha_", req, res,
                       search_request, counter);
+        }else{
 
+          runPPMAPlanner(monolithic_pr2_planner::T_IMHA, "imha_", req, res,
+                      search_request, counter);
+        }
         // Write env if the whole thing didn't crash.
         m_stats_writer.writeStartGoal(counter, start_goal, environment_seed);
         counter++;
@@ -446,6 +565,236 @@ bool EnvInterfaces::runMHAPlanner(int planner_type,
   }
 }
 
+bool EnvInterfaces::runPPMAPlanner(int planner_type,
+                                  std::string planner_prefix,
+                                  GetMobileArmPlan::Request &req,
+                                  GetMobileArmPlan::Response &res,
+                                  SearchRequestParamsPtr search_request,
+                                  int counter) {
+  int start_id, goal_id;
+  bool return_first_soln = true;
+  bool forward_search = true;
+  double allocated_time_secs = req.allocated_planning_time;
+  clock_t total_planning_time;
+  bool isPlanFound;
+  vector<double> stats;
+  vector<string> stat_names;
+  vector<FullBodyState> states;
+
+  /*
+  int planner_queues = NUM_SMHA_HEUR;
+  if (planner_type == monolithic_pr2_planner::T_EES)
+      planner_queues = 3;
+  else if (planner_type == monolithic_pr2_planner::T_IMHA)
+      planner_queues = NUM_IMHA_HEUR;
+      */
+
+
+  ros::NodeHandle ph("~");
+  bool use_new_heuristics;
+  ph.param("use_new_heuristics", use_new_heuristics, false);
+  int planner_queues;
+
+  if (!use_new_heuristics) {
+    planner_queues = 4;
+  } else {
+    planner_queues = 20;
+  }
+
+  printf("\n");
+  ROS_INFO("Initialize environment");
+  m_mon_env->reset();
+  m_mon_env->setPlannerType(planner_type);
+  m_mon_env->setUseNewHeuristics(use_new_heuristics);
+  m_ppma_planner.reset(new PPMAPlanner(si_, m_mon_env.get(), forward_search, allocated_time_secs, &ppma_replan_params));
+  m_ppma_planner->setProblemDefinition(ompl::base::ProblemDefinitionPtr(pdef_));
+
+  total_planning_time = clock();
+  ROS_INFO("configuring request");
+
+  if (!m_mon_env->configureRequest(search_request, start_id, goal_id)) {
+    ROS_ERROR("Unable to configure request for %s! Trial ID: %d",
+              planner_prefix.c_str(), counter);
+
+    total_planning_time = -1;
+    int soln_cost = -1;
+    packageMHAStats(stat_names, stats, soln_cost, 0, total_planning_time);
+
+    for (unsigned int i = 0; i < stats.size(); i++) {
+      stats[i] = -1;
+    }
+
+    m_stats_writer.writeSBPL(stats, states, counter, planner_prefix);
+    res.stats_field_names = stat_names;
+    res.stats = stats;
+    return true;
+  }
+
+  //transform start quat to rpy
+  tf::Quaternion qs(req.start.pose.orientation.x, req.start.pose.orientation.y, req.start.pose.orientation.z, req.start.pose.orientation.w);
+  tf::Matrix3x3 ms(qs);
+  double start_roll, start_pitch, start_yaw;
+  ms.getRPY(start_roll, start_pitch, start_yaw);
+  
+  //set start
+  ompl::base::StateSpacePtr space(m_ppma_planner->getSpaceInformation()->getStateSpace());
+  ompl::base::CompoundState *ompl_start = dynamic_cast<ompl::base::CompoundState*> (space->allocState());
+
+  ompl_start->as<VectorState>(0)->values[0] = req.start.pose.position.x;
+  ompl_start->as<VectorState>(0)->values[1] = req.start.pose.position.y;
+  ompl_start->as<VectorState>(0)->values[2] = req.start.pose.position.z;
+  ompl_start->as<VectorState>(0)->values[3] = start_roll;
+  ompl_start->as<VectorState>(0)->values[4] = start_pitch;
+  ompl_start->as<VectorState>(0)->values[5] = start_yaw;
+  ompl_start->as<VectorState>(0)->values[6] = req.rarm_start[2];
+  ompl_start->as<VectorState>(0)->values[7] = req.larm_start[2];
+  ompl_start->as<VectorState>(0)->values[8] = req.body_start[2];
+
+  ompl_start->as<SE2State>(1)->setX(req.body_start[0]);
+  ompl_start->as<SE2State>(1)->setY(req.body_start[1]);
+  ompl_start->as<SE2State>(1)->setYaw(req.body_start[3]);
+
+  if(m_ppma_planner->getSpaceInformation()->isValid(ompl_start))
+    ROS_INFO("[ompl] Start state is valid.");
+  else
+    ROS_ERROR("[ompl] Start state is NOT valid.");
+
+  //transform goal quat to rpy
+  tf::Quaternion qg(req.goal.pose.orientation.x, req.goal.pose.orientation.y, req.goal.pose.orientation.z, req.goal.pose.orientation.w);
+  tf::Matrix3x3 mg(qg);
+  double goal_roll, goal_pitch, goal_yaw;
+  mg.getRPY(goal_roll, goal_pitch, goal_yaw);
+
+  //set goal
+  ompl::base::CompoundState *ompl_goal = dynamic_cast<ompl::base::CompoundState*> (space->allocState());
+
+  ompl_goal->as<VectorState>(0)->values[0] = req.goal.pose.position.x;
+  ompl_goal->as<VectorState>(0)->values[1] = req.goal.pose.position.y;
+  ompl_goal->as<VectorState>(0)->values[2] = req.goal.pose.position.z;
+  ompl_goal->as<VectorState>(0)->values[3] = goal_roll;
+  ompl_goal->as<VectorState>(0)->values[4] = goal_pitch;
+  ompl_goal->as<VectorState>(0)->values[5] = goal_yaw;
+  ompl_goal->as<VectorState>(0)->values[6] = req.rarm_goal[2];
+  ompl_goal->as<VectorState>(0)->values[7] = req.larm_goal[2];
+  ompl_goal->as<VectorState>(0)->values[8] = req.body_goal[2];
+
+  ompl_goal->as<SE2State>(1)->setX(req.body_goal[0]);
+  ompl_goal->as<SE2State>(1)->setY(req.body_goal[1]);
+  ompl_goal->as<SE2State>(1)->setYaw(req.body_goal[3]);
+
+  if(m_ppma_planner->getSpaceInformation()->isValid(ompl_goal))
+    ROS_INFO("[ompl] Goal state is valid.");
+  else
+    ROS_ERROR("[ompl] Goal state is NOT valid.");
+
+  pdef_->clearGoal();
+  pdef_->clearStartStates();
+  pdef_->clearSolutionPaths();
+  pdef_->setStartAndGoalStates(ompl_start,ompl_goal);
+  pdef_->setOptimizationObjective(ompl::base::OptimizationObjectivePtr(new ompl::base::PathLengthOptimizationObjective(si_)));
+
+  m_ppma_planner->setProblemDefinition(pdef_);
+
+  if (req.use_ompl) {
+    ROS_INFO("rrt init");
+    RobotState::setPlanningMode(PlanningModes::RIGHT_ARM_MOBILE);
+    m_rrt.reset(new OMPLPR2Planner(m_mon_env->getCollisionSpace(), RRT));
+    ROS_INFO("rrt check request");
+
+    if (!m_rrt->checkRequest(*search_request)) {
+      ROS_WARN("bad start goal for ompl");
+    }
+
+    ROS_INFO("rrt plan");
+    m_rrt->setPlanningTime(req.allocated_planning_time);
+    double t0 = ros::Time::now().toSec();
+    bool found_path = m_rrt->planPathCallback(*search_request, counter,
+                                              m_stats_writer);
+    double t1 = ros::Time::now().toSec();
+    ROS_INFO("rrt done planning");
+
+    res.stats_field_names.clear();
+    res.stats_field_names.push_back("total_plan_time");
+    res.stats.clear();
+
+    if (found_path) {
+      res.stats.push_back(t1 - t0);
+    } else {
+      res.stats.push_back(-1.0);
+    }
+
+    sleep(5);
+    return true;
+  } else {
+    m_ppma_planner->set_initialsolution_eps(ppma_replan_params.initial_eps);
+    m_ppma_planner->set_search_mode(return_first_soln);
+
+    m_ppma_planner->set_start(start_id);
+    ROS_INFO("setting %s goal id to %d", planner_prefix.c_str(), goal_id);
+    m_ppma_planner->set_goal(goal_id);
+    m_ppma_planner->force_planning_from_scratch();
+    vector<int> soln;
+    int soln_cost;
+    ROS_INFO("allocated time is %f", req.allocated_planning_time);
+    
+    //MHAReplanParams replan_params(req.allocated_planning_time);
+
+    //replan_params.meta_search_type = static_cast<mha_planner::MetaSearchType>
+    //                                 (req.meta_search_type);
+    //replan_params.planner_type = static_cast<mha_planner::PlannerType>
+    //                             (req.planner_type);
+    //replan_params.mha_type = static_cast<mha_planner::MHAType>(req.mha_type);
+
+    // if (replan_params.mha_type == mha_planner::MHAType::ORIGINAL) {
+    //   if (EPS >= 2.0) {
+    //     replan_params.inflation_eps = EPS / 2.0;
+    //     replan_params.anchor_eps = 2.0;
+    //   } else {
+    //     replan_params.inflation_eps = sqrt(EPS);
+    //     replan_params.anchor_eps = sqrt(EPS);
+    //   }
+    // } else {
+    //   replan_params.inflation_eps = EPS;
+    //   replan_params.anchor_eps = 1.0;
+    // }
+
+    // replan_params.use_anchor = true;
+    // replan_params.return_first_solution = false;
+    // replan_params.final_eps = EPS;
+
+    //isPlanFound = m_mha_planner->replan(req.allocated_planning_time,
+    //                                     &soln, &soln_cost);
+    //isPlanFound = m_mha_planner->replan(&soln, replan_params, &soln_cost);
+    double totalTime;
+    isPlanFound = m_ppma_planner->replan(&soln, ppma_replan_params, &soln_cost, totalTime);
+
+    if (isPlanFound) {
+      ROS_INFO("Plan found in %s Planner. Moving on to reconstruction.",
+               planner_prefix.c_str());
+      //states =  m_env->reconstructPath(soln);
+      total_planning_time = clock() - total_planning_time;
+      //packageMHAStats(stat_names, stats, soln_cost, states.size(),
+      //                total_planning_time);
+      //m_stats_writer.writeSBPL(stats, states, counter, planner_prefix);
+      //res.stats_field_names = stat_names;
+      //res.stats = stats;
+    } else {
+      //packageMHAStats(stat_names, stats, soln_cost, states.size(),
+      //                total_planning_time);
+      //res.stats_field_names = stat_names;
+      //res.stats = stats;
+      ROS_INFO("No plan found in %s!", planner_prefix.c_str());
+    }
+
+    if (m_params.run_trajectory) {
+      ROS_INFO("Running trajectory!");
+      //runTrajectory(states); Commented out to compile without driver.
+    }
+
+    return true;
+  }
+}
+
 bool EnvInterfaces::planPathCallback(GetMobileArmPlan::Request &req,
                                      GetMobileArmPlan::Response &res) {
   boost::unique_lock<boost::mutex> lock(mutex);
@@ -497,8 +846,14 @@ bool EnvInterfaces::planPathCallback(GetMobileArmPlan::Request &req,
 
   double total_planning_time = clock();
   bool forward_search = true;
-  isPlanFound = runMHAPlanner(monolithic_pr2_planner::T_SMHA, "smha_", req, res,
+  if(!use_ppma){
+    isPlanFound = runMHAPlanner(monolithic_pr2_planner::T_SMHA, "smha_", req, res,
                               search_request, counter);
+  }else{
+
+    isPlanFound = runPPMAPlanner(monolithic_pr2_planner::T_SMHA, "smha_", req, res,
+                              search_request, counter);
+  }
   counter++;
   return true;
 }
@@ -562,8 +917,14 @@ bool EnvInterfaces::demoCallback(GetMobileArmPlan::Request &req,
   bool isPlanFound;
 
   bool forward_search = true;
-  isPlanFound = runMHAPlanner(monolithic_pr2_planner::T_SMHA, "smha_", req, res,
+  if(!use_ppma){
+    isPlanFound = runMHAPlanner(monolithic_pr2_planner::T_SMHA, "smha_", req, res,
                               search_request, counter);
+  }else{
+
+    isPlanFound = runPPMAPlanner(monolithic_pr2_planner::T_SMHA, "smha_", req, res,
+                              search_request, counter);
+  }
 
   return isPlanFound;
 }

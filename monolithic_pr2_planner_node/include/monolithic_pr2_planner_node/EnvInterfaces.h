@@ -1,14 +1,19 @@
 #pragma once
 #include <monolithic_pr2_planner/Environment.h>
+#include <monolithic_pr2_planner/EnvironmentMonolithic.h>
 #include <monolithic_pr2_planner_node/CollisionSpaceInterface.h>
 #include <monolithic_pr2_planner_node/GetMobileArmPlan.h>
 #include <boost/shared_ptr.hpp>
 #include <string>
 #include <Eigen/Core>
 #include <ros/ros.h>
+#include <tf/transform_datatypes.h>
+#include <sbpl/headers.h>
 #include <tf/transform_listener.h>
 #include <sbpl/planners/araplanner.h>
+#include <sbpl/planners/ppma.h>
 #include <sbpl/planners/mha_planner.h>
+#include <sbpl/planners/planner.h>
 #include <nav_msgs/OccupancyGrid.h>
 #include <sbpl/planners/planner.h>
 #include <costmap_2d/costmap_2d_ros.h>
@@ -20,6 +25,21 @@
 
 #include <monolithic_pr2_planner_node/ompl_pr2_planner.h>
 #include <monolithic_pr2_planner/ExperimentFramework/randomStartGoalGenerator.h>
+
+#include <ompl/base/Cost.h>
+#include <ompl/base/spaces/SE2StateSpace.h>
+#include <ompl/geometric/SimpleSetup.h>
+#include <ompl/geometric/PathGeometric.h>
+#include <ompl/base/spaces/RealVectorStateSpace.h>
+#include <ompl/base/State.h>
+#include <ompl/base/StateValidityChecker.h>
+#include <ompl/base/objectives/PathLengthOptimizationObjective.h>
+#include <ompl/geometric/planners/rrt/RRTConnect.h>
+#include <ompl/geometric/planners/prm/PRM.h>
+#include <ompl/geometric/planners/rrt/RRTstar.h>
+#include <ompl/base/goals/GoalState.h>
+#include <monolithic_pr2_planner_node/ompl_collision_checker.h>
+#include <monolithic_pr2_planner/CollisionSpaceMgr.h>
 
 //#include <full_body_controller/ExecutePath.h>
 
@@ -33,6 +53,8 @@ namespace monolithic_pr2_planner_node {
     class EnvInterfaces {
         public:
             EnvInterfaces(boost::shared_ptr<monolithic_pr2_planner::Environment> env,
+                ros::NodeHandle nh);
+            EnvInterfaces(boost::shared_ptr<monolithic_pr2_planner::EnvironmentMonolithic> env,
                 ros::NodeHandle nh);
             void getParams();
             bool planPathCallback(GetMobileArmPlan::Request &req, 
@@ -71,15 +93,23 @@ namespace monolithic_pr2_planner_node {
                   GetMobileArmPlan::Response &res,
                   monolithic_pr2_planner::SearchRequestParamsPtr search_request,
                   int counter);
+            bool runPPMAPlanner(int planner_type,
+                  std::string planner_prefix,
+                  GetMobileArmPlan::Request &req,
+                  GetMobileArmPlan::Response &res,
+                  monolithic_pr2_planner::SearchRequestParamsPtr search_request,
+                  int counter);
             void getRobotState(tf::TransformListener &tf_, BodyPose &body_pos, std::vector<double> &rangles, std::vector<double>
               &langles);
             double getJointAngle(std::string name, sensor_msgs::JointStateConstPtr
               msg);
             void runTrajectory(std::vector<monolithic_pr2_planner::FullBodyState>& states);
+            void ompl_spi_init(const monolithic_pr2_planner::CSpaceMgrPtr& cspace);
 
             ros::NodeHandle m_nodehandle;
             InterfaceParams m_params;
             boost::shared_ptr<monolithic_pr2_planner::Environment> m_env;
+            boost::shared_ptr<monolithic_pr2_planner::EnvironmentMonolithic> m_mon_env;//Hstar(karthik)
             tf::TransformListener m_tf;
             std::unique_ptr<CollisionSpaceInterface> m_collision_space_interface;
             ros::ServiceServer m_plan_service;
@@ -87,6 +117,7 @@ namespace monolithic_pr2_planner_node {
             ros::ServiceServer m_write_experiments_service;
             ros::ServiceServer m_demo_service;
             std::unique_ptr<SBPLPlanner> m_ara_planner;
+            std::unique_ptr<PPMAPlanner> m_ppma_planner;
             std::unique_ptr<MHAPlanner> m_mha_planner;
             ros::Subscriber m_nav_map;
             ros::Publisher m_costmap_pub;
@@ -108,5 +139,12 @@ namespace monolithic_pr2_planner_node {
             std::unique_ptr<OMPLPR2Planner> m_rrtstar;
             std::unique_ptr<OMPLPR2Planner> m_rrtstar_first_sol;
             StatsWriter m_stats_writer;
+
+            //PPMA
+            ReplanParams ppma_replan_params;
+            ompl::base::SpaceInformationPtr si_;
+            ompl::base::StateSpacePtr fullBodySpace;
+            omplFullBodyCollisionChecker* m_collision_checker;
+            ompl::base::ProblemDefinitionPtr pdef_;
     };
 }

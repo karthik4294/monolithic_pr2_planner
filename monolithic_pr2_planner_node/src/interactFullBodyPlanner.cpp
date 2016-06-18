@@ -2,6 +2,7 @@
 #include <monolithic_pr2_planner/Constants.h>
 #include <monolithic_pr2_planner_node/fbp_stat_writer.h>
 #include <sbpl/planners/mha_planner.h>
+#include <sbpl/planners/ppma.h>
 
 enum MenuItems{PLAN_IMHA_ROUND_ROBIN=1,
                PLAN_IMHA_META_A_STAR,
@@ -9,6 +10,8 @@ enum MenuItems{PLAN_IMHA_ROUND_ROBIN=1,
                PLAN_SMHA_ROUND_ROBIN,
                PLAN_SMHA_META_A_STAR,
                PLAN_SMHA_DTS,
+               PLAN_HSTAR,
+               PLAN_WASTAR,
                INTERRUPT,
                WRITE_TO_FILE};
 
@@ -44,7 +47,9 @@ void ControlPlanner::processFeedback(const visualization_msgs::InteractiveMarker
        feedback->menu_entry_id == MenuItems::PLAN_IMHA_DTS ||
        feedback->menu_entry_id == MenuItems::PLAN_SMHA_ROUND_ROBIN ||
        feedback->menu_entry_id == MenuItems::PLAN_SMHA_META_A_STAR ||
-       feedback->menu_entry_id == MenuItems::PLAN_SMHA_DTS){
+       feedback->menu_entry_id == MenuItems::PLAN_SMHA_DTS ||
+       feedback->menu_entry_id == MenuItems::PLAN_HSTAR ||
+       feedback->menu_entry_id == MenuItems::PLAN_WASTAR){
 
       visualization_msgs::InteractiveMarker start_base_marker;
       int_marker_server->get("start_base",start_base_marker);
@@ -76,21 +81,26 @@ void ControlPlanner::processFeedback(const visualization_msgs::InteractiveMarker
       req.larm_goal = angles1;
       req.body_goal = goal_base;
 
-    if(feedback->menu_entry_id == MenuItems::PLAN_IMHA_ROUND_ROBIN ||
-       feedback->menu_entry_id == MenuItems::PLAN_IMHA_META_A_STAR ||
-       feedback->menu_entry_id == MenuItems::PLAN_IMHA_DTS)
-      req.planner_type = mha_planner::PlannerType::IMHA;
-    else
-      req.planner_type = mha_planner::PlannerType::SMHA;
+      if(feedback->menu_entry_id == MenuItems::PLAN_IMHA_ROUND_ROBIN ||
+         feedback->menu_entry_id == MenuItems::PLAN_IMHA_META_A_STAR ||
+         feedback->menu_entry_id == MenuItems::PLAN_IMHA_DTS)
+        req.planner_type = mha_planner::PlannerType::IMHA;
+      else
+        req.planner_type = mha_planner::PlannerType::SMHA;
 
-    if(feedback->menu_entry_id == MenuItems::PLAN_IMHA_META_A_STAR ||
-       feedback->menu_entry_id == MenuItems::PLAN_SMHA_META_A_STAR)
-      req.meta_search_type = mha_planner::MetaSearchType::META_A_STAR;
-    else if(feedback->menu_entry_id == MenuItems::PLAN_IMHA_DTS ||
-            feedback->menu_entry_id == MenuItems::PLAN_SMHA_DTS)
-      req.meta_search_type = mha_planner::MetaSearchType::DTS;
-    else
-      req.meta_search_type = mha_planner::MetaSearchType::ROUND_ROBIN;
+      if(feedback->menu_entry_id == MenuItems::PLAN_IMHA_META_A_STAR ||
+         feedback->menu_entry_id == MenuItems::PLAN_SMHA_META_A_STAR)
+        req.meta_search_type = mha_planner::MetaSearchType::META_A_STAR;
+      else if(feedback->menu_entry_id == MenuItems::PLAN_IMHA_DTS ||
+              feedback->menu_entry_id == MenuItems::PLAN_SMHA_DTS)
+        req.meta_search_type = mha_planner::MetaSearchType::DTS;
+      else
+        req.meta_search_type = mha_planner::MetaSearchType::ROUND_ROBIN;
+
+      if(feedback->menu_entry_id == MenuItems::PLAN_HSTAR)
+        req.planner_type = 0;
+      if(feedback->menu_entry_id == MenuItems::PLAN_WASTAR)
+        req.planner_type = 1;
 
       //position of the wrist in the object's frame
       req.rarm_object.pose.position.x = 0;
@@ -616,6 +626,8 @@ ControlPlanner::ControlPlanner(){
   menu_handler.insert("Plan SMHA Round Robin", boost::bind(&ControlPlanner::processFeedback, this, _1));
   menu_handler.insert("Plan SMHA Meta A*", boost::bind(&ControlPlanner::processFeedback, this, _1));
   menu_handler.insert("Plan SMHA DTS", boost::bind(&ControlPlanner::processFeedback, this, _1));
+  menu_handler.insert("Plan HSTAR", boost::bind(&ControlPlanner::processFeedback, this, _1));
+  menu_handler.insert("Plan WASTAR", boost::bind(&ControlPlanner::processFeedback, this, _1));
   menu_handler.insert("Interrupt Planner", boost::bind(&ControlPlanner::processFeedback, this, _1));
   menu_handler.insert("Write to file", boost::bind(&ControlPlanner::processFeedback, this, _1));
   menu_handler.apply(*int_marker_server, "start_base");

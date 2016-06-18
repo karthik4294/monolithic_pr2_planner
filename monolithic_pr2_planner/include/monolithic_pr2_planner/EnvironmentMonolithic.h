@@ -80,6 +80,9 @@ namespace monolithic_pr2_planner {
             void GetContState(int state_id, ompl::base::State *state);
             int GetContStateID(const ompl::base::State* state); 
             int GetContEdgeCost(const ompl::base::State *parent, const ompl::base::State *child);
+            void printContState(std::vector<double> val){
+                return;
+            }
             bool convertFullState(const ompl::base::State* state, RobotState& robot_state, ContBaseState& base);
             int getAdditionalCostMult();
 
