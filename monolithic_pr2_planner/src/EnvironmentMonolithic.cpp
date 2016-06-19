@@ -86,7 +86,6 @@ int EnvironmentMonolithic::GetGoalHeuristic(int heuristic_id, int stateID) {
         ROS_DEBUG_NAMED(HEUR_LOG, "%s : %d", heur.first.c_str(), heur.second);
     }
 
-
     if(!m_use_new_heuristics){
       switch (heuristic_id) {
         case 0:  // Anchor
@@ -370,6 +369,7 @@ void EnvironmentMonolithic::GetSuccs(int q_id, int sourceStateID, vector<int>* s
                             successor->id());
             successor->printToDebug(MPRIM_LOG);
 
+
             if (m_goal->isSatisfiedBy(successor)){
                 m_goal->storeAsSolnState(successor);
                 ROS_DEBUG_NAMED(SEARCH_LOG, "Found potential goal at state %d %d", successor->id(),
@@ -379,21 +379,9 @@ void EnvironmentMonolithic::GetSuccs(int q_id, int sourceStateID, vector<int>* s
                 succIDs->push_back(successor->id());
             }
 
-            //costs->push_back(mprim->cost());
+            costs->push_back(mprim->cost());
             
-            //**SBPL motions get cost from OMPL continuous cost to make it uniform//
-            ompl::base::State* source_state = si_->allocState();
-            ompl::base::State* succ_state = si_->allocState();;
-            int cont_cost;
-
-            GetContState(sourceStateID, source_state);
-            GetContState(successor->id(), succ_state);
-
-            cont_cost = GetContEdgeCost(source_state, succ_state);
-
-            costs->push_back(cont_cost);
-            
-            ROS_DEBUG_NAMED(SEARCH_LOG, "motion succeeded with cost %d", cont_cost);
+            ROS_DEBUG_NAMED(SEARCH_LOG, "motion succeeded with cost %d", mprim->cost());
         } else {
             //successor->robot_pose().visualize();
             ROS_DEBUG_NAMED(SEARCH_LOG, "successor failed collision checking");
@@ -694,7 +682,7 @@ void EnvironmentMonolithic::GetNearestLatticeState(const ompl::base::State *cont
   ContBaseState continous_base_state;
   
   if (!convertFullState(continuous_state, continous_robot_state, continous_base_state)) {
-    ROS_ERROR("ik failed for visualization!");
+    ROS_ERROR("[GetNearestLatticeState]ik failed for visualization!");
   }
 
   GraphStatePtr continous_graph_state = make_shared<GraphState>(continous_robot_state);
@@ -759,7 +747,7 @@ int EnvironmentMonolithic::GetContStateID(const ompl::base::State* state){
   RobotState robot_state;
   ContBaseState base;
   if (!convertFullState(state, robot_state, base)) {
-    ROS_ERROR("ik failed for visualization!");
+    ROS_ERROR("[GetContState]ik failed for visualization!");
   }
   GraphStatePtr graph_state = make_shared<GraphState>(robot_state);
   m_hash_mgr->save(graph_state);
@@ -774,11 +762,11 @@ int EnvironmentMonolithic::GetContEdgeCost(const ompl::base::State *parent, cons
     ContBaseState parent_base, child_base;
     
     if (!convertFullState(parent, parent_robot_state, parent_base)) {
-      ROS_ERROR("ik failed for visualization!");
+      ROS_ERROR("[GetContedgecost]ik failed for visualization!");
     }
 
     if (!convertFullState(child, child_robot_state, child_base)) {
-      ROS_ERROR("ik failed for visualization!");
+      ROS_ERROR("[GetContedgecost]ik failed for visualization!");
     }
      
     double dx = parent_base.x() - child_base.x();

@@ -105,6 +105,9 @@ namespace monolithic_pr2_planner_node {
               msg);
             void runTrajectory(std::vector<monolithic_pr2_planner::FullBodyState>& states);
             void ompl_spi_init(const monolithic_pr2_planner::CSpaceMgrPtr& cspace);
+            bool convertFullState(ompl::base::State* state,
+                              monolithic_pr2_planner::RobotState& robot_state,
+                              monolithic_pr2_planner::ContBaseState& base);
 
             ros::NodeHandle m_nodehandle;
             InterfaceParams m_params;
@@ -146,5 +149,6 @@ namespace monolithic_pr2_planner_node {
             ompl::base::StateSpacePtr fullBodySpace;
             omplFullBodyCollisionChecker* m_collision_checker;
             ompl::base::ProblemDefinitionPtr pdef_;
+            ompl::geometric::PathSimplifier* pathSimplifier;
     };
 }

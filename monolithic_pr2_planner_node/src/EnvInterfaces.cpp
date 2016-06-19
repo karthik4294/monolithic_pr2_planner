@@ -164,6 +164,7 @@ void EnvInterfaces::ompl_spi_init(const monolithic_pr2_planner::CSpaceMgrPtr& cs
     si_->setup();
 
     pdef_.reset(new ompl::base::ProblemDefinition(si_));
+    pathSimplifier = new ompl::geometric::PathSimplifier(si_);
 
 }
 
@@ -736,55 +737,65 @@ bool EnvInterfaces::runPPMAPlanner(int planner_type,
     m_ppma_planner->force_planning_from_scratch();
     vector<int> soln;
     int soln_cost;
+    RRTData data;
+
     ROS_INFO("allocated time is %f", req.allocated_planning_time);
     
-    //MHAReplanParams replan_params(req.allocated_planning_time);
-
-    //replan_params.meta_search_type = static_cast<mha_planner::MetaSearchType>
-    //                                 (req.meta_search_type);
-    //replan_params.planner_type = static_cast<mha_planner::PlannerType>
-    //                             (req.planner_type);
-    //replan_params.mha_type = static_cast<mha_planner::MHAType>(req.mha_type);
-
-    // if (replan_params.mha_type == mha_planner::MHAType::ORIGINAL) {
-    //   if (EPS >= 2.0) {
-    //     replan_params.inflation_eps = EPS / 2.0;
-    //     replan_params.anchor_eps = 2.0;
-    //   } else {
-    //     replan_params.inflation_eps = sqrt(EPS);
-    //     replan_params.anchor_eps = sqrt(EPS);
-    //   }
-    // } else {
-    //   replan_params.inflation_eps = EPS;
-    //   replan_params.anchor_eps = 1.0;
-    // }
-
-    // replan_params.use_anchor = true;
-    // replan_params.return_first_solution = false;
-    // replan_params.final_eps = EPS;
-
-    //isPlanFound = m_mha_planner->replan(req.allocated_planning_time,
-    //                                     &soln, &soln_cost);
-    //isPlanFound = m_mha_planner->replan(&soln, replan_params, &soln_cost);
     double totalTime;
     isPlanFound = m_ppma_planner->replan(&soln, ppma_replan_params, &soln_cost, totalTime);
 
     if (isPlanFound) {
-      ROS_INFO("Plan found in %s Planner. Moving on to reconstruction.",
-               planner_prefix.c_str());
-      //states =  m_env->reconstructPath(soln);
-      total_planning_time = clock() - total_planning_time;
-      //packageMHAStats(stat_names, stats, soln_cost, states.size(),
-      //                total_planning_time);
-      //m_stats_writer.writeSBPL(stats, states, counter, planner_prefix);
-      //res.stats_field_names = stat_names;
-      //res.stats = stats;
+        
+        ROS_INFO("Plan found in %s Planner. Moving on to reconstruction.", planner_prefix.c_str());
+
+        getchar();
+
+        ompl::base::PathPtr path = m_ppma_planner->getProblemDefinition()->getSolutionPath();
+        data.planned = true;
+        
+        ompl::geometric::PathGeometric geo_path = static_cast<ompl::geometric::PathGeometric&>(*path);
+        
+        double t2 = ros::Time::now().toSec();
+        bool b1 = pathSimplifier->reduceVertices(geo_path);
+        bool b2 = pathSimplifier->collapseCloseVertices(geo_path);
+        bool b3 = pathSimplifier->shortcutPath(geo_path);
+        geo_path.interpolate();
+        //ROS_ERROR("shortcut:%d\n",b3);
+        double t3 = ros::Time::now().toSec();
+        double reduction_time = t3-t2;
+
+        data.plan_time = totalTime;
+        data.shortcut_time = reduction_time;
+
+        vector<RobotState> robot_states;
+        vector<ContBaseState> base_states;
+
+        for(unsigned int i=0; i<geo_path.getStateCount(); i++){
+            ompl::base::State* state = geo_path.getState(i);
+            RobotState robot_state;
+            ContBaseState base;
+            if (!convertFullState(state, robot_state, base)){
+                ROS_ERROR("ik failed on path reconstruction!");
+            }
+            vector<double> l_arm, r_arm;
+            robot_states.push_back(robot_state);
+            base_states.push_back(base);
+
+            robot_state.right_arm().getAngles(&r_arm);
+            robot_state.left_arm().getAngles(&l_arm);
+            BodyPose bp = base.body_pose();
+            
+            // Visualizer::pviz->visualizeRobot(r_arm, l_arm, bp, 150, "robot", 0);
+            // usleep(5000);
+        }
+        data.robot_state = robot_states;
+        data.base = base_states;
+        data.path_length = geo_path.getStateCount();
+        m_stats_writer.setPlannerId(req.planner_type);
+        m_stats_writer.write(counter, data);
     } else {
-      //packageMHAStats(stat_names, stats, soln_cost, states.size(),
-      //                total_planning_time);
-      //res.stats_field_names = stat_names;
-      //res.stats = stats;
-      ROS_INFO("No plan found in %s!", planner_prefix.c_str());
+        data.planned = false;
+        ROS_INFO("No plan found in %s!", planner_prefix.c_str());
     }
 
     if (m_params.run_trajectory) {
@@ -1250,6 +1261,48 @@ double EnvInterfaces::getJointAngle(std::string name,
 
   ROS_ERROR("joint doesn't exist! (exit)\n");
   exit(1);
+}
+
+bool EnvInterfaces::convertFullState(ompl::base::State* state, RobotState& robot_state,
+                                      ContBaseState& base){
+    ContObjectState obj_state;
+
+    // fix the l_arm angles
+    vector<double> init_l_arm(7,0);
+    init_l_arm[0] = (0.038946287971107774);
+    init_l_arm[1] = (1.2146697069025374);
+    init_l_arm[2] = (1.3963556492780154);
+    init_l_arm[3] = -1.1972269899800325;
+    init_l_arm[4] = (-4.616317135720829);
+    init_l_arm[5] = -0.9887266887318599;
+    init_l_arm[6] = 1.1755681069775656;
+
+    LeftContArmState l_arm(init_l_arm);
+    RightContArmState r_arm;
+
+    const ompl::base::CompoundState* s = dynamic_cast<const ompl::base::CompoundState*> (state);
+    obj_state.x((*(s->as<VectorState>(0)))[0]);
+    obj_state.y((*(s->as<VectorState>(0)))[1]);
+    obj_state.z((*(s->as<VectorState>(0)))[2]);
+    obj_state.roll((*(s->as<VectorState>(0)))[3]);
+    obj_state.pitch((*(s->as<VectorState>(0)))[4]);
+    obj_state.yaw((*(s->as<VectorState>(0)))[5]);
+    r_arm.setUpperArmRoll((*(s->as<VectorState>(0)))[6]);
+    l_arm.setUpperArmRoll((*(s->as<VectorState>(0)))[7]);
+    base.z((*(s->as<VectorState>(0)))[8]);
+    base.x(s->as<SE2State>(1)->getX());
+    base.y(s->as<SE2State>(1)->getY());
+    base.theta(s->as<SE2State>(1)->getYaw());
+
+    RobotState seed_state(base, r_arm, l_arm);
+    RobotPosePtr final_state;
+
+    if (!RobotState::computeRobotPose(obj_state, seed_state, final_state))
+        return false;
+
+    robot_state = *final_state;
+    return true;
+
 }
 
 /**
