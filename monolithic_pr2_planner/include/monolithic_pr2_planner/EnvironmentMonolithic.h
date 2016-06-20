@@ -12,6 +12,7 @@
 #include <stdexcept>
 #include <vector>
 #include <memory>
+#include <pviz/pviz.h>
 
 //OMPL headers
 #include <ompl/base/SpaceInformation.h>
@@ -63,7 +64,7 @@ namespace monolithic_pr2_planner {
             int GetTrueCost(int parentID, int childID);
             std::vector<FullBodyState> reconstructPath(std::vector<int> 
                 state_ids);
-            void reset(const ompl::base::SpaceInformationPtr);
+            void reset();
             void setPlannerType(int planner_type);
             void setUseNewHeuristics(bool use_new_heuristics){m_use_new_heuristics = use_new_heuristics;};
 
@@ -80,11 +81,10 @@ namespace monolithic_pr2_planner {
             void GetContState(int state_id, ompl::base::State *state);
             int GetContStateID(const ompl::base::State* state); 
             int GetContEdgeCost(const ompl::base::State *parent, const ompl::base::State *child);
-            void printContState(std::vector<double> val){
-                return;
-            }
+            void printContState(const ompl::base::State* state);
             bool convertFullState(const ompl::base::State* state, RobotState& robot_state, ContBaseState& base);
             int getAdditionalCostMult();
+            void VisualizeContState(const ompl::base::State *child, const ompl::base::State *parent, bool is_discrete, bool is_path);
 
             ParameterCatalog m_param_catalog;
             CSpaceMgrPtr m_cspace_mgr;

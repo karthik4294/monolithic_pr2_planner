@@ -31,13 +31,13 @@ EnvironmentMonolithic::EnvironmentMonolithic(ros::NodeHandle nh)
  * @details Intended to be used between calls to subsequent planning
  * requests.
  */
-void EnvironmentMonolithic::reset(const ompl::base::SpaceInformationPtr si) {
+void EnvironmentMonolithic::reset() {
     m_heur_mgr->reset();
     // m_heur_mgr->setCollisionSpaceMgr(m_cspace_mgr);
     m_hash_mgr.reset(new HashManager(&StateID2IndexMapping));
     m_edges.clear();
 
-    si_ = si;
+    //si_ = si;
 
     // Fetch params again, in case they're being modified between calls.
     // m_param_catalog.fetch(m_nodehandle);
@@ -747,7 +747,7 @@ int EnvironmentMonolithic::GetContStateID(const ompl::base::State* state){
   RobotState robot_state;
   ContBaseState base;
   if (!convertFullState(state, robot_state, base)) {
-    ROS_ERROR("[GetContState]ik failed for visualization!");
+    ROS_ERROR("[GetContStateid]ik failed for visualization!");
   }
   GraphStatePtr graph_state = make_shared<GraphState>(robot_state);
   m_hash_mgr->save(graph_state);
@@ -762,11 +762,11 @@ int EnvironmentMonolithic::GetContEdgeCost(const ompl::base::State *parent, cons
     ContBaseState parent_base, child_base;
     
     if (!convertFullState(parent, parent_robot_state, parent_base)) {
-      ROS_ERROR("[GetContedgecost]ik failed for visualization!");
+      //ROS_ERROR("[GetContedgecost]ik failed for visualization!");
     }
 
     if (!convertFullState(child, child_robot_state, child_base)) {
-      ROS_ERROR("[GetContedgecost]ik failed for visualization!");
+      //ROS_ERROR("[GetContedgecost]ik failed for visualization!");
     }
      
     double dx = parent_base.x() - child_base.x();
@@ -787,6 +787,67 @@ int EnvironmentMonolithic::GetContEdgeCost(const ompl::base::State *parent, cons
     return cost;
 }
 
+void EnvironmentMonolithic::VisualizeContState(const ompl::base::State *child, const ompl::base::State *parent, bool is_discrete, bool is_path)
+{
+    if(is_path)
+      return;
+
+    RobotState parent_robot_state, child_robot_state;
+    ContBaseState parent_base, child_base;
+    
+    if(is_discrete)
+    {
+      if (!convertFullState(parent, parent_robot_state, parent_base)) {
+        ROS_ERROR("[VisualizeContState] Discrete parent ik failed for visualization!");
+      }
+
+      if (!convertFullState(child, child_robot_state, child_base)) {
+        ROS_ERROR("[VisualizeContState] Discrete child ik failed for visualization!");
+      }
+    }
+
+    if(!is_discrete)
+    {
+      if (!convertFullState(parent, parent_robot_state, parent_base)) {
+        ROS_ERROR("[VisualizeContState] Continous parent ik failed for visualization!");
+      }
+
+      if (!convertFullState(child, child_robot_state, child_base)) {
+        ROS_ERROR("[VisualizeContState] Conitnous child ik failed for visualization!");
+      }
+    }
+
+    vector<double> l_arm, r_arm;
+    //robot_states.push_back(child_robot_state);
+    //base_states.push_back(child_base);
+
+    child_robot_state.right_arm().getAngles(&r_arm);
+    child_robot_state.left_arm().getAngles(&l_arm);
+    BodyPose bp = child_base.body_pose();  
+
+    if(is_discrete)
+      Visualizer::pviz->visualizeRobot(r_arm, l_arm, bp, 60, "discrete_state", 0);
+    else
+      Visualizer::pviz->visualizeRobot(r_arm, l_arm, bp, 240, "continous_state", 0);
+    
+    usleep(5000);
+}
+
+void EnvironmentMonolithic::printContState(const ompl::base::State* state)
+{
+    const ompl::base::CompoundState* s = dynamic_cast<const ompl::base::CompoundState*> (state);
+
+    ROS_INFO("OBJ STATE: %f %f %f %f %f %f", s->as<VectorState>(0)->values[0], s->as<VectorState>(0)->values[1],
+                                             s->as<VectorState>(0)->values[2], s->as<VectorState>(0)->values[3], 
+                                             s->as<VectorState>(0)->values[4], s->as<VectorState>(0)->values[5]);
+    ROS_INFO("UPPER ARM ROLL STATE: %f %f", s->as<VectorState>(0)->values[6], s->as<VectorState>(0)->values[7]);
+
+    ROS_INFO("TORSO STATE: %f", s->as<VectorState>(0)->values[8]);
+
+    ROS_INFO("BASE STATE: %f %f %f", s->as<SE2State>(1)->getX(), s->as<SE2State>(1)->getY(), s->as<SE2State>(1)->getYaw());
+}
+
+
 bool EnvironmentMonolithic::convertFullState(const ompl::base::State* state, RobotState& robot_state, ContBaseState& base)
 {
     ContObjectState obj_state;
@@ -795,7 +856,7 @@ bool EnvironmentMonolithic::convertFullState(const ompl::base::State* state, Rob
     vector<double> init_l_arm(7,0);
     init_l_arm[0] = (0.038946287971107774);
     init_l_arm[1] = (1.2146697069025374);
-    init_l_arm[2] = (1.3963556492780154);
+    init_l_arm[2] = 1.3963556492780154;
     init_l_arm[3] = -1.1972269899800325;
     init_l_arm[4] = (-4.616317135720829);
     init_l_arm[5] = -0.9887266887318599;
@@ -821,7 +882,7 @@ bool EnvironmentMonolithic::convertFullState(const ompl::base::State* state, Rob
     RobotState seed_state(base, r_arm, l_arm);
     RobotPosePtr final_state;
 
-    if (!RobotState::computeRobotPose(obj_state, seed_state, final_state))
+    if (!RobotState::computeRobotPose(obj_state.getDiscObjectState(), seed_state, final_state))
         return false;
 
     robot_state = *final_state;

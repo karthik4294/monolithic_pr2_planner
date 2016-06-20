@@ -32,7 +32,7 @@ EnvInterfaces::EnvInterfaces(
   m_env(env), m_collision_space_interface(new CollisionSpaceInterface(
                                             env->getCollisionSpace(), env->getHeuristicMgr())),
   m_generator(new StartGoalGenerator(env->getCollisionSpace())),
-  ppma_replan_params(30.0)
+  ppma_replan_params(300.0)
   // m_rrt(new OMPLPR2Planner(env->getCollisionSpace(), RRT)),
   // m_prm(new OMPLPR2Planner(env->getCollisionSpace(), PRM_P)),
   // m_rrtstar(new OMPLPR2Planner(env->getCollisionSpace(), RRTSTAR)),
@@ -65,7 +65,7 @@ EnvInterfaces::EnvInterfaces(
   m_mon_env(env), m_collision_space_interface(new CollisionSpaceInterface(
                                             env->getCollisionSpace(), env->getHeuristicMgr())),
   m_generator(new StartGoalGenerator(env->getCollisionSpace())),
-  ppma_replan_params(30.0)
+  ppma_replan_params(300.0)
   // m_rrt(new OMPLPR2Planner(env->getCollisionSpace(), RRT)),
   // m_prm(new OMPLPR2Planner(env->getCollisionSpace(), PRM_P)),
   // m_rrtstar(new OMPLPR2Planner(env->getCollisionSpace(), RRTSTAR)),
@@ -83,11 +83,13 @@ EnvInterfaces::EnvInterfaces(
   ppma_replan_params.final_eps = 100.0;
   ppma_replan_params.return_first_solution = false;
 
-  //Setup ompl spaceinformation for hstar
-  ompl_spi_init(env->getCollisionSpace());
+  //RobotState::setPlanningMode(PlanningModes::RIGHT_ARM_MOBILE);
 
-  m_ppma_planner.reset(new PPMAPlanner(si_, m_mon_env.get(), forward_search, allocated_time_secs, &ppma_replan_params));
-  m_ppma_planner->setProblemDefinition(ompl::base::ProblemDefinitionPtr(pdef_));
+  //Setup ompl spaceinformation for hstar
+  //ompl_spi_init(env->getCollisionSpace());
+
+  //m_ppma_planner.reset(new PPMAPlanner(si_, m_mon_env.get(), forward_search, allocated_time_secs, &ppma_replan_params));
+  //m_ppma_planner->setProblemDefinition(ompl::base::ProblemDefinitionPtr(pdef_));
   
   m_costmap_pub = m_nodehandle.advertise<nav_msgs::OccupancyGrid>("costmap_pub",
                                                                   1);
@@ -170,7 +172,7 @@ void EnvInterfaces::ompl_spi_init(const monolithic_pr2_planner::CSpaceMgrPtr& cs
 
 void EnvInterfaces::interruptPlannerCallback(std_msgs::EmptyConstPtr) {
   ROS_INFO("Planner interrupt received!");
-  m_mha_planner->interrupt();
+  m_ppma_planner->interrupt();
 }
 
 void EnvInterfaces::getParams() {
@@ -592,26 +594,51 @@ bool EnvInterfaces::runPPMAPlanner(int planner_type,
 
 
   ros::NodeHandle ph("~");
-  bool use_new_heuristics;
-  ph.param("use_new_heuristics", use_new_heuristics, false);
-  int planner_queues;
+  // bool use_new_heuristics;
+  // ph.param("use_new_heuristics", use_new_heuristics, false);
+  // int planner_queues;
 
-  if (!use_new_heuristics) {
-    planner_queues = 4;
-  } else {
-    planner_queues = 20;
-  }
+  // if (!use_new_heuristics) {
+  //   planner_queues = 4;
+  // } else {
+  //   planner_queues = 20;
+  // }
 
   printf("\n");
   ROS_INFO("Initialize environment");
-  m_mon_env->reset(si_);
+  m_mon_env->reset();
   m_mon_env->setPlannerType(planner_type);
-  m_mon_env->setUseNewHeuristics(use_new_heuristics);
+  //m_mon_env->setUseNewHeuristics(use_new_heuristics);
+
+  RobotState::setPlanningMode(PlanningModes::RIGHT_ARM_MOBILE);
+
+
+  m_rrt.reset(new OMPLPR2Planner(m_mon_env->getCollisionSpace(), RRT));
+  // ompl::base::SpaceInformationPtr si(new ompl::base::SpaceInformation(*m_rrt->GetSpaceInformationPtr()));
+  ompl::base::SpaceInformationPtr si = m_rrt->GetSpaceInformationPtr();
+
+  ompl::base::ProblemDefinitionPtr pdef(new ompl::base::ProblemDefinition(si));
+  m_full_body_space = m_rrt->GetStateSpacePtr();
+  
+  FullState ompl_start(m_full_body_space);
+  FullState ompl_goal(m_full_body_space);
+  if (!m_rrt->createStartGoal(ompl_start, ompl_goal, *search_request))                                                            
+    return false;
+  
+  pdef->clearGoal();
+  pdef->clearStartStates();
+  pdef->setStartAndGoalStates(ompl_start,ompl_goal);  
+  
 
   ppma_replan_params.planner_mode = static_cast<ppma_planner::PlannerMode>(req.planner_type);
 
-  m_ppma_planner.reset(new PPMAPlanner(si_, m_mon_env.get(), forward_search, allocated_time_secs, &ppma_replan_params));
-  m_ppma_planner->setProblemDefinition(ompl::base::ProblemDefinitionPtr(pdef_));
+  m_ppma_planner.reset(new PPMAPlanner(si, m_mon_env.get(), forward_search, allocated_time_secs, &ppma_replan_params));
+  m_ppma_planner->setup();
+  m_ppma_planner->setProblemDefinition(ompl::base::ProblemDefinitionPtr(pdef));
+
+  ompl::base::GoalState* temp_goal = new ompl::base::GoalState(m_ppma_planner->getSpaceInformation());
+  temp_goal->setState(ompl_goal);
+  ompl::base::GoalPtr temp_goal2(temp_goal);   
 
   total_planning_time = clock();
   ROS_INFO("configuring request");
@@ -634,68 +661,80 @@ bool EnvInterfaces::runPPMAPlanner(int planner_type,
     return true;
   }
 
-  LeftContArmState left_arm_start = search_request->left_arm_start;
-  RightContArmState right_arm_start = search_request->right_arm_start;
-  ContBaseState base_start = search_request->base_start;
-  ContObjectState obj_state = right_arm_start.getObjectStateRelBody();
+  // LeftContArmState left_arm_start = search_request->left_arm_start;
+  // RightContArmState right_arm_start = search_request->right_arm_start;
+  // ContBaseState base_start = search_request->base_start;
+  // ContObjectState obj_state = right_arm_start.getObjectStateRelBody();
   
-  //set start
-  ompl::base::StateSpacePtr space(m_ppma_planner->getSpaceInformation()->getStateSpace());
-  ompl::base::CompoundState *ompl_start = dynamic_cast<ompl::base::CompoundState*> (space->allocState());
+  // //set start
+  // ompl::base::StateSpacePtr space(m_ppma_planner->getSpaceInformation()->getStateSpace());
+  // ompl::base::CompoundState *ompl_start = dynamic_cast<ompl::base::CompoundState*> (space->allocState());
 
-  ompl_start->as<VectorState>(0)->values[0] = obj_state.x();
-  ompl_start->as<VectorState>(0)->values[1] = obj_state.y();
-  ompl_start->as<VectorState>(0)->values[2] = obj_state.z();
-  ompl_start->as<VectorState>(0)->values[3] = obj_state.roll();
-  ompl_start->as<VectorState>(0)->values[4] = obj_state.pitch();
-  ompl_start->as<VectorState>(0)->values[5] = obj_state.yaw();
-  ompl_start->as<VectorState>(0)->values[6] = right_arm_start.getUpperArmRollAngle();
-  ompl_start->as<VectorState>(0)->values[7] = left_arm_start.getUpperArmRollAngle();
-  ompl_start->as<VectorState>(0)->values[8] = base_start.z();
+  // ompl_start->as<VectorState>(0)->values[0] = obj_state.x();
+  // ompl_start->as<VectorState>(0)->values[1] = obj_state.y();
+  // ompl_start->as<VectorState>(0)->values[2] = obj_state.z();
+  // ompl_start->as<VectorState>(0)->values[3] = obj_state.roll();
+  // ompl_start->as<VectorState>(0)->values[4] = obj_state.pitch();
+  // ompl_start->as<VectorState>(0)->values[5] = obj_state.yaw();
+  // ompl_start->as<VectorState>(0)->values[6] = right_arm_start.getUpperArmRollAngle();
+  // ompl_start->as<VectorState>(0)->values[7] = left_arm_start.getUpperArmRollAngle();
+  // ompl_start->as<VectorState>(0)->values[8] = base_start.z();
 
-  ompl_start->as<SE2State>(1)->setX(base_start.x());
-  ompl_start->as<SE2State>(1)->setY(base_start.y());
-  ompl_start->as<SE2State>(1)->setYaw(angles::normalize_angle(base_start.theta()));
+  // ompl_start->as<SE2State>(1)->setX(base_start.x());
+  // ompl_start->as<SE2State>(1)->setY(base_start.y());
+  // ompl_start->as<SE2State>(1)->setYaw(angles::normalize_angle(base_start.theta()));
 
-  if(m_ppma_planner->getSpaceInformation()->isValid(ompl_start))
-    ROS_INFO("[ompl] Start state is valid.");
-  else
-    ROS_ERROR("[ompl] Start state is NOT valid.");
+  // ROS_INFO("Start Object: %f %f %f %f %f %f", obj_state.x(), obj_state.y(), obj_state.z(), obj_state.roll(), obj_state.pitch(), obj_state.yaw());
+  
+  // ROS_INFO("Start upper arm roll: %f %f", right_arm_start.getUpperArmRollAngle(), left_arm_start.getUpperArmRollAngle());
+  
+  // ROS_INFO("Start torso: %f", base_start.z());
 
-  LeftContArmState left_arm_goal = search_request->left_arm_goal;
-  RightContArmState right_arm_goal = search_request->right_arm_goal;
-  ContBaseState base_goal = search_request->base_goal;
-  ContObjectState goal_obj_state = right_arm_goal.getObjectStateRelBody();
+  // ROS_INFO("Start base: %f %f %f", base_start.x(), base_start.y(), angles::normalize_angle(base_start.theta()) );
 
-  //set goal
-  ompl::base::CompoundState *ompl_goal = dynamic_cast<ompl::base::CompoundState*> (space->allocState());
 
-  ompl_goal->as<VectorState>(0)->values[0] = goal_obj_state.x();
-  ompl_goal->as<VectorState>(0)->values[1] = goal_obj_state.y();
-  ompl_goal->as<VectorState>(0)->values[2] = goal_obj_state.z();
-  ompl_goal->as<VectorState>(0)->values[3] = goal_obj_state.roll();
-  ompl_goal->as<VectorState>(0)->values[4] = goal_obj_state.pitch();
-  ompl_goal->as<VectorState>(0)->values[5] = goal_obj_state.yaw();
-  ompl_goal->as<VectorState>(0)->values[6] = right_arm_goal.getUpperArmRollAngle();
-  ompl_goal->as<VectorState>(0)->values[7] = left_arm_goal.getUpperArmRollAngle();
-  ompl_goal->as<VectorState>(0)->values[8] = base_goal.z();
 
-  ompl_goal->as<SE2State>(1)->setX(base_goal.x());
-  ompl_goal->as<SE2State>(1)->setY(base_goal.y());
-  ompl_goal->as<SE2State>(1)->setYaw(angles::normalize_angle(base_goal.theta()));
+  // if(m_ppma_planner->getSpaceInformation()->isValid(ompl_start))
+  //   ROS_INFO("[ompl] Start state is valid.");
+  // else
+  //   ROS_ERROR("[ompl] Start state is NOT valid.");
 
-  if(m_ppma_planner->getSpaceInformation()->isValid(ompl_goal))
-    ROS_INFO("[ompl] Goal state is valid.");
-  else
-    ROS_ERROR("[ompl] Goal state is NOT valid.");
+  // getchar();
 
-  pdef_->clearGoal();
-  pdef_->clearStartStates();
-  pdef_->clearSolutionPaths();
-  pdef_->setStartAndGoalStates(ompl_start,ompl_goal);
-  pdef_->setOptimizationObjective(ompl::base::OptimizationObjectivePtr(new ompl::base::PathLengthOptimizationObjective(si_)));
+  // LeftContArmState left_arm_goal = search_request->left_arm_goal;
+  // RightContArmState right_arm_goal = search_request->right_arm_goal;
+  // ContBaseState base_goal = search_request->base_goal;
+  // ContObjectState goal_obj_state = right_arm_goal.getObjectStateRelBody();
 
-  m_ppma_planner->setProblemDefinition(pdef_);
+  // //set goal
+  // ompl::base::CompoundState *ompl_goal = dynamic_cast<ompl::base::CompoundState*> (space->allocState());
+
+  // ompl_goal->as<VectorState>(0)->values[0] = goal_obj_state.x();
+  // ompl_goal->as<VectorState>(0)->values[1] = goal_obj_state.y();
+  // ompl_goal->as<VectorState>(0)->values[2] = goal_obj_state.z();
+  // ompl_goal->as<VectorState>(0)->values[3] = goal_obj_state.roll();
+  // ompl_goal->as<VectorState>(0)->values[4] = goal_obj_state.pitch();
+  // ompl_goal->as<VectorState>(0)->values[5] = goal_obj_state.yaw();
+  // ompl_goal->as<VectorState>(0)->values[6] = right_arm_goal.getUpperArmRollAngle();
+  // ompl_goal->as<VectorState>(0)->values[7] = left_arm_goal.getUpperArmRollAngle();
+  // ompl_goal->as<VectorState>(0)->values[8] = base_goal.z();
+
+  // ompl_goal->as<SE2State>(1)->setX(base_goal.x());
+  // ompl_goal->as<SE2State>(1)->setY(base_goal.y());
+  // ompl_goal->as<SE2State>(1)->setYaw(angles::normalize_angle(base_goal.theta()));
+
+  // if(m_ppma_planner->getSpaceInformation()->isValid(ompl_goal))
+  //   ROS_INFO("[ompl] Goal state is valid.");
+  // else
+  //   ROS_ERROR("[ompl] Goal state is NOT valid.");
+
+  // pdef_->clearGoal();
+  // pdef_->clearStartStates();
+  // pdef_->clearSolutionPaths();
+  // pdef_->setStartAndGoalStates(ompl_start,ompl_goal);
+  // pdef_->setOptimizationObjective(ompl::base::OptimizationObjectivePtr(new ompl::base::PathLengthOptimizationObjective(si_)));
+
+  // m_ppma_planner->setProblemDefinition(pdef_);
 
   if (req.use_ompl) {
     ROS_INFO("rrt init");
@@ -772,24 +811,26 @@ bool EnvInterfaces::runPPMAPlanner(int planner_type,
 
         for(unsigned int i=0; i<geo_path.getStateCount(); i++){
             ompl::base::State* state = geo_path.getState(i);
-            RobotState robot_state;
-            ContBaseState base;
-            if (!convertFullState(state, robot_state, base)){
-                ROS_ERROR("ik failed on path reconstruction!");
-            }
-            vector<double> l_arm, r_arm;
-            robot_states.push_back(robot_state);
-            base_states.push_back(base);
-
-            robot_state.right_arm().getAngles(&r_arm);
-            robot_state.left_arm().getAngles(&l_arm);
-            BodyPose bp = base.body_pose();
             
-            // Visualizer::pviz->visualizeRobot(r_arm, l_arm, bp, 150, "robot", 0);
-            // usleep(5000);
+            // RobotState robot_state;
+            // ContBaseState base;
+            
+            // if (!convertFullState(state, robot_state, base)){
+            //     ROS_ERROR("ik failed on path reconstruction!");
+            // }
+            // vector<double> l_arm, r_arm;
+            // robot_states.push_back(robot_state);
+            // base_states.push_back(base);
+
+            // robot_state.right_arm().getAngles(&r_arm);
+            // robot_state.left_arm().getAngles(&l_arm);
+            // BodyPose bp = base.body_pose();
+            
+            // // Visualizer::pviz->visualizeRobot(r_arm, l_arm, bp, 150, "robot", 0);
+            // // usleep(5000);
         }
-        data.robot_state = robot_states;
-        data.base = base_states;
+        //data.robot_state = robot_states;
+        //data.base = base_states;
         data.path_length = geo_path.getStateCount();
         m_stats_writer.setPlannerId(req.planner_type);
         m_stats_writer.write(counter, data);

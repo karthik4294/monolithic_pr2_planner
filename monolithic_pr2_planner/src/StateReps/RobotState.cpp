@@ -210,6 +210,12 @@ bool RobotState::computeRobotPose(const DiscObjectState& disc_obj_state,
     seed_l_arm.getAngles(&l_seed);
     l_angles = l_seed;
 
+    // ROS_INFO("Object state: %f %f %f %f %f %f", obj_state.x(), obj_state.y(), obj_state.z(), obj_state.roll(), obj_state.pitch(), obj_state.yaw());
+    // ROS_INFO("Right angles: %f %f %f %f %f %f %f", r_seed[0], r_seed[1], r_seed[2], r_seed[3], r_seed[4], r_seed[5], r_seed[6]);
+    // ROS_INFO("Left angles: %f %f %f %f %f %f %f", l_seed[0], l_seed[1], l_seed[2], l_seed[3], l_seed[4], l_seed[5], l_seed[6]);
+    // ROS_INFO("Torso state: %d", seed_robot_pose.base_state().z());
+    // ROS_INFO("Base state: %d %d %f", seed_robot_pose.base_state().x(), seed_robot_pose.base_state().y(), seed_robot_pose.base_state().theta());
+
     ik_calls++;
     struct timeval tv_b;
     struct timeval tv_a;
@@ -230,32 +236,32 @@ bool RobotState::computeRobotPose(const DiscObjectState& disc_obj_state,
         ROS_ERROR("what! not using any arm for IK??");
     }
 
-#ifdef USE_KDL_SOLVER
-    if (use_right_arm) {
-        SBPLArmModelPtr arm_model = seed_r_arm.getArmModel();
-        bool ik_success = arm_model->computeFastIK(r_wrist_frame, r_seed, r_angles);
-        if (!ik_success) {
-            ROS_DEBUG_NAMED(MPRIM_LOG, "IK failed for right arm");
-            ROS_ERROR("IK failed for right arm");
-            return false;
-        }
-    }
+// #ifdef USE_KDL_SOLVER
+//     if (use_right_arm) {
+//         SBPLArmModelPtr arm_model = seed_r_arm.getArmModel();
+//         bool ik_success = arm_model->computeFastIK(r_wrist_frame, r_seed, r_angles);
+//         if (!ik_success) {
+//             ROS_DEBUG_NAMED(MPRIM_LOG, "IK failed for right arm");
+//             ROS_ERROR("IK failed for right arm");
+//             return false;
+//         }
+//     }
 
-    if (use_left_arm) {
-        SBPLArmModelPtr arm_model = seed_l_arm.getArmModel();
-        bool ik_success = arm_model->computeFastIK(l_wrist_frame, l_seed, l_angles);
-        if (!ik_success){
-            ROS_DEBUG_NAMED(MPRIM_LOG, "IK failed for left arm");
-            ROS_ERROR("IK failed for left arm");
-            return false;
-        }
-    }
-#endif
-#ifdef USE_IKFAST_SOLVER
+//     if (use_left_arm) {
+//         SBPLArmModelPtr arm_model = seed_l_arm.getArmModel();
+//         bool ik_success = arm_model->computeFastIK(l_wrist_frame, l_seed, l_angles);
+//         if (!ik_success){
+//             ROS_DEBUG_NAMED(MPRIM_LOG, "IK failed for left arm");
+//             //ROS_ERROR("IK failed for left arm");
+//             return false;
+//         }
+//     }
+// #endif
+// #ifdef USE_IKFAST_SOLVER
     if (use_right_arm){
         double r_free_angle = r_seed[Joints::UPPER_ARM_ROLL];
         if (!m_ikfast_solver.ikRightArm(r_wrist_frame, r_free_angle, &r_angles)){
-            ROS_ERROR("Use right arm failure. IKfast");
+            //ROS_ERROR("Use right arm failure. IKfast");
             return false;
         }
     }
@@ -263,11 +269,11 @@ bool RobotState::computeRobotPose(const DiscObjectState& disc_obj_state,
     if (use_left_arm){
         double l_free_angle = l_seed[Joints::UPPER_ARM_ROLL];
         if (!m_ikfast_solver.ikLeftArm(l_wrist_frame, l_free_angle, &l_angles)){
-            ROS_ERROR("Use left arm failure. IKfast");
+            //ROS_ERROR("Use left arm failure. IKfast");
             return false;
         }
     }
-#endif
+//#endif
     double after = tv_a.tv_usec + (tv_a.tv_sec * 1000000);
     ik_time += after - before;
 

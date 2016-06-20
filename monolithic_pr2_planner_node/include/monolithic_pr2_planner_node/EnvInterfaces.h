@@ -150,5 +150,7 @@ namespace monolithic_pr2_planner_node {
             omplFullBodyCollisionChecker* m_collision_checker;
             ompl::base::ProblemDefinitionPtr pdef_;
             ompl::geometric::PathSimplifier* pathSimplifier;
+            ompl::base::StateSpacePtr m_full_body_space;
+
     };
 }
