@@ -20,14 +20,14 @@ bool omplFullBodyCollisionChecker::isValid(const ompl::base::State *state) const
                               (*(s->as<ompl::base::RealVectorStateSpace::StateType>(0)))[4],
                               (*(s->as<ompl::base::RealVectorStateSpace::StateType>(0)))[5]);
     vector<double> wpose(12,0);
-    wpose[0] = (*(s->as<ompl::base::RealVectorStateSpace::StateType>(0)))[1]; //arm x
-    wpose[1] = (*(s->as<ompl::base::RealVectorStateSpace::StateType>(0)))[2]; //arm y
-    wpose[2] = (*(s->as<ompl::base::RealVectorStateSpace::StateType>(0)))[3]; //arm z
-    wpose[3] = 0; //roll
-    wpose[4] = 0; //pitch
-    wpose[5] = (*(s->as<ompl::base::RealVectorStateSpace::StateType>(0)))[4]; //yaw
+    wpose[0] = (*(s->as<ompl::base::RealVectorStateSpace::StateType>(0)))[0]; //arm x
+    wpose[1] = (*(s->as<ompl::base::RealVectorStateSpace::StateType>(0)))[1]; //arm y
+    wpose[2] = (*(s->as<ompl::base::RealVectorStateSpace::StateType>(0)))[2]; //arm z
+    wpose[3] = (*(s->as<ompl::base::RealVectorStateSpace::StateType>(0)))[3]; //roll
+    wpose[4] = (*(s->as<ompl::base::RealVectorStateSpace::StateType>(0)))[4]; //pitch
+    wpose[5] = (*(s->as<ompl::base::RealVectorStateSpace::StateType>(0)))[5]; //yaw
     wpose[6] = (*(s->as<ompl::base::RealVectorStateSpace::StateType>(0)))[6]; //right arm free angle
-    wpose[7] = (*(s->as<ompl::base::RealVectorStateSpace::StateType>(0)))[5]; //left arm free angle
+    wpose[7] = (*(s->as<ompl::base::RealVectorStateSpace::StateType>(0)))[7]; //left arm free angle
     wpose[8] = s->as<ompl::base::SE2StateSpace::StateType>(1)->getX(); //base x
     wpose[9] = s->as<ompl::base::SE2StateSpace::StateType>(1)->getY(); //base y
     wpose[10] = (*(s->as<ompl::base::RealVectorStateSpace::StateType>(0)))[8]; //spine z
@@ -58,6 +58,13 @@ bool omplFullBodyCollisionChecker::isValid(const ompl::base::State *state) const
       printf("Collision checking ik failed\n");  
       return false;
     }
+    // ROS_INFO("[Collison] Object state: %f %f %f %f %f %f", wpose[0], wpose[1],wpose[2],wpose[3],wpose[4],wpose[5]);
+    // ROS_INFO("[Collison] Upper arm roll state: %f %f", wpose[6], wpose[7]);
+    // ROS_INFO("[Collison] Torso state: %f", wpose[10]);
+    // ROS_INFO("[Collison] Base state: %f %f %f", wpose[8], wpose[9], wpose[11]);
+
+    // getchar();
+
     //printf("Collision check at ik success\n");
     RightContArmState new_r_arm = new_robot_state->right_arm();
     if ( m_cspace->isValid(base, new_r_arm, l_arm)){

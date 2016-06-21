@@ -627,7 +627,7 @@ bool EnvInterfaces::runPPMAPlanner(int planner_type,
   
   pdef->clearGoal();
   pdef->clearStartStates();
-  pdef->setStartAndGoalStates(ompl_start,ompl_goal);  
+  pdef->setStartAndGoalStates(ompl_start,ompl_goal); 
   
 
   ppma_replan_params.planner_mode = static_cast<ppma_planner::PlannerMode>(req.planner_type);
@@ -638,7 +638,7 @@ bool EnvInterfaces::runPPMAPlanner(int planner_type,
 
   ompl::base::GoalState* temp_goal = new ompl::base::GoalState(m_ppma_planner->getSpaceInformation());
   temp_goal->setState(ompl_goal);
-  ompl::base::GoalPtr temp_goal2(temp_goal);   
+  ompl::base::GoalPtr temp_goal2(temp_goal);  
 
   total_planning_time = clock();
   ROS_INFO("configuring request");
@@ -723,6 +723,14 @@ bool EnvInterfaces::runPPMAPlanner(int planner_type,
   // ompl_goal->as<SE2State>(1)->setY(base_goal.y());
   // ompl_goal->as<SE2State>(1)->setYaw(angles::normalize_angle(base_goal.theta()));
 
+  // ROS_INFO("Goal Object: %f %f %f %f %f %f", goal_obj_state.x(), goal_obj_state.y(), goal_obj_state.z(), goal_obj_state.roll(), goal_obj_state.pitch(), goal_obj_state.yaw());
+  
+  // ROS_INFO("Goal upper arm roll: %f %f", right_arm_goal.getUpperArmRollAngle(), left_arm_goal.getUpperArmRollAngle());
+  
+  // ROS_INFO("Goal torso: %f", base_goal.z());
+
+  // ROS_INFO("Goal base: %f %f %f", base_goal.x(), base_goal.y(), angles::normalize_angle(base_goal.theta()) );
+
   // if(m_ppma_planner->getSpaceInformation()->isValid(ompl_goal))
   //   ROS_INFO("[ompl] Goal state is valid.");
   // else
@@ -767,8 +775,6 @@ bool EnvInterfaces::runPPMAPlanner(int planner_type,
     sleep(5);
     return true;
   } else {
-    m_ppma_planner->set_initialsolution_eps(ppma_replan_params.initial_eps);
-    m_ppma_planner->set_search_mode(return_first_soln);
 
     m_ppma_planner->set_start(start_id);
     ROS_INFO("setting %s goal id to %d", planner_prefix.c_str(), goal_id);
@@ -779,15 +785,23 @@ bool EnvInterfaces::runPPMAPlanner(int planner_type,
     RRTData data;
 
     ROS_INFO("allocated time is %f", req.allocated_planning_time);
-    
+
+    ompl::base::State* start_get = si->allocState();
+    m_mon_env->GetContState(start_id, start_get);
+    m_mon_env->printContState(start_get);
+    m_mon_env->VisualizeContState(start_get, start_get, false, false);
+
+    ompl::base::State* goal_get = si->allocState();
+    m_mon_env->GetContState(goal_id, goal_get);
+    m_mon_env->printContState(goal_get);
+    m_mon_env->VisualizeContState(goal_get, goal_get, false, false);
+
     double totalTime;
     isPlanFound = m_ppma_planner->replan(&soln, ppma_replan_params, &soln_cost, totalTime);
 
     if (isPlanFound) {
         
         ROS_INFO("Plan found in %s Planner. Moving on to reconstruction.", planner_prefix.c_str());
-
-        getchar();
 
         ompl::base::PathPtr path = m_ppma_planner->getProblemDefinition()->getSolutionPath();
         data.planned = true;

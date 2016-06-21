@@ -48,6 +48,7 @@ OMPLPR2Planner::OMPLPR2Planner(const CSpaceMgrPtr& cspace, int planner_id):
     r7->setDimensionName(7,"free_angle_left");
     r7->setDimensionName(8,"torso");
     ompl::base::RealVectorBounds bounds(9);
+
     bounds.setLow(0,0.35);//arms_x
     bounds.setHigh(0,1.2);//arms_x
     bounds.setLow(1,-0.6);//arms_y

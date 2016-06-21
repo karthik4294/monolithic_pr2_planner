@@ -67,6 +67,9 @@ namespace monolithic_pr2_planner {
             void reset();
             void setPlannerType(int planner_type);
             void setUseNewHeuristics(bool use_new_heuristics){m_use_new_heuristics = use_new_heuristics;};
+            void GetContState(int state_id, ompl::base::State *state);
+            void VisualizeContState(const ompl::base::State *child, const ompl::base::State *parent, bool is_discrete, bool is_path);
+            void printContState(const ompl::base::State* state);
 
         protected:
             bool setStartGoal(SearchRequestPtr search_request, 
@@ -78,13 +81,10 @@ namespace monolithic_pr2_planner {
 
             //PPMA
             void GetNearestLatticeState(const ompl::base::State *continuous_state, ompl::base::State* nearest_lattice_state, int *nearest_lattice_state_id);
-            void GetContState(int state_id, ompl::base::State *state);
             int GetContStateID(const ompl::base::State* state); 
             int GetContEdgeCost(const ompl::base::State *parent, const ompl::base::State *child);
-            void printContState(const ompl::base::State* state);
             bool convertFullState(const ompl::base::State* state, RobotState& robot_state, ContBaseState& base);
             int getAdditionalCostMult();
-            void VisualizeContState(const ompl::base::State *child, const ompl::base::State *parent, bool is_discrete, bool is_path);
 
             ParameterCatalog m_param_catalog;
             CSpaceMgrPtr m_cspace_mgr;
@@ -115,5 +115,9 @@ namespace monolithic_pr2_planner {
             void PrintState(int stateID, bool bVerbose, FILE* fOut=NULL){};
             void PrintEnv_Config(FILE* fOut){};
             std::map<Edge, MotionPrimitivePtr> m_edges;
+
+            inline double randomDouble(double min, double max){
+                return min + (max-min) * ( double(rand()) / RAND_MAX );
+            }
     };
 }

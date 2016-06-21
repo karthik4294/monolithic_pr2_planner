@@ -344,6 +344,22 @@ void EnvironmentMonolithic::GetSuccs(int q_id, int sourceStateID, vector<int>* s
     source_state->robot_pose().printToDebug(SEARCH_LOG);
     if (m_param_catalog.m_visualization_params.expansions) {
         RobotState expansion_pose = source_state->robot_pose();
+        
+        //************************DEBUG*********************//        
+        // ROS_INFO("From GetSuccs");
+        // ContBaseState base_state = expansion_pose.getContBaseState();
+        // RightContArmState right_arm_state = expansion_pose.right_arm();
+        // LeftContArmState left_arm_state = expansion_pose.left_arm();
+        // ContObjectState obj_state = expansion_pose.getObjectStateRelMap();
+        // std::vector<double> r_angles(7,0);
+        // right_arm_state.getAngles(&r_angles);
+        // ROS_INFO("Object : %f %f %f %f %f %f", obj_state.x(), obj_state.y(), obj_state.z(), obj_state.roll(), obj_state.pitch(), obj_state.yaw() );
+        // ROS_INFO("Upper arm Roll : %f %f", right_arm_state.getUpperArmRollAngle(), left_arm_state.getUpperArmRollAngle());
+        // ROS_INFO("Right arm angles : %f %f %f %f %f %f %f", r_angles[0],r_angles[1],r_angles[2],r_angles[3],r_angles[4],r_angles[5],r_angles[6]) ;        
+        // ROS_INFO("Torso : %f", base_state.z());
+        // ROS_INFO("Base : %f %f %f", base_state.x(), base_state.y(), base_state.theta());
+        //************************DEBUG*********************//
+
         expansion_pose.visualize(250/NUM_SMHA_HEUR*q_id);
         // source_state->robot_pose().visualize(250/NUM_SMHA_HEUR*q_id);
         m_cspace_mgr->visualizeAttachedObject(expansion_pose, 250/NUM_SMHA_HEUR*q_id);
@@ -686,33 +702,12 @@ void EnvironmentMonolithic::GetNearestLatticeState(const ompl::base::State *cont
   }
 
   GraphStatePtr continous_graph_state = make_shared<GraphState>(continous_robot_state);
-  //continous_graph_state->robot_pose(continous_robot_state);
   m_hash_mgr->save(continous_graph_state);
   *nearest_lattice_state_id = continous_graph_state->id();
 
-  graph_robot_state = continous_graph_state->robot_pose();
-
-  ContBaseState base_state = graph_robot_state.getContBaseState();
-  RightContArmState right_arm_state = graph_robot_state.right_arm();
-  LeftContArmState left_arm_state = graph_robot_state.left_arm();
-  ContObjectState obj_state = graph_robot_state.getObjectStateRelMap();
-
-  ompl::base::CompoundState* s = dynamic_cast<ompl::base::CompoundState*> (nearest_lattice_state);
-
-  s->as<VectorState>(0)->values[0] = obj_state.x();
-  s->as<VectorState>(0)->values[1] = obj_state.y();
-  s->as<VectorState>(0)->values[2] = obj_state.z();
-  s->as<VectorState>(0)->values[3] = obj_state.roll();
-  s->as<VectorState>(0)->values[4] = obj_state.pitch();
-  s->as<VectorState>(0)->values[5] = obj_state.yaw();
-  s->as<VectorState>(0)->values[6] = right_arm_state.getUpperArmRollAngle();
-  s->as<VectorState>(0)->values[7] = left_arm_state.getUpperArmRollAngle();
-  s->as<VectorState>(0)->values[8] = base_state.z();
-
-  s->as<SE2State>(1)->setX(base_state.x());
-  s->as<SE2State>(1)->setY(base_state.y());
-  s->as<SE2State>(1)->setYaw(base_state.theta());
-
+  GetContState(*nearest_lattice_state_id, nearest_lattice_state);
+  ROS_INFO("Nearest Lattice State:");
+  printContState(nearest_lattice_state);
 }
 
 void EnvironmentMonolithic::GetContState(int state_id, ompl::base::State *state){
@@ -723,7 +718,7 @@ void EnvironmentMonolithic::GetContState(int state_id, ompl::base::State *state)
   ContBaseState base_state = robot_state.getContBaseState();
   RightContArmState right_arm_state = robot_state.right_arm();
   LeftContArmState left_arm_state = robot_state.left_arm();
-  ContObjectState obj_state = robot_state.getObjectStateRelMap();
+  ContObjectState obj_state = robot_state.getObjectStateRelBody();
 
   ompl::base::CompoundState* s = dynamic_cast<ompl::base::CompoundState*> (state);
 
@@ -739,7 +734,7 @@ void EnvironmentMonolithic::GetContState(int state_id, ompl::base::State *state)
 
   s->as<SE2State>(1)->setX(base_state.x());
   s->as<SE2State>(1)->setY(base_state.y());
-  s->as<SE2State>(1)->setYaw(base_state.theta());
+  s->as<SE2State>(1)->setYaw(angles::normalize_angle(base_state.theta() ) );
 
 }
 
@@ -762,11 +757,11 @@ int EnvironmentMonolithic::GetContEdgeCost(const ompl::base::State *parent, cons
     ContBaseState parent_base, child_base;
     
     if (!convertFullState(parent, parent_robot_state, parent_base)) {
-      //ROS_ERROR("[GetContedgecost]ik failed for visualization!");
+      ROS_ERROR("[GetContedgecost]ik failed for visualization!");
     }
 
     if (!convertFullState(child, child_robot_state, child_base)) {
-      //ROS_ERROR("[GetContedgecost]ik failed for visualization!");
+      ROS_ERROR("[GetContedgecost]ik failed for visualization!");
     }
      
     double dx = parent_base.x() - child_base.x();
@@ -862,6 +857,15 @@ bool EnvironmentMonolithic::convertFullState(const ompl::base::State* state, Rob
     init_l_arm[5] = -0.9887266887318599;
     init_l_arm[6] = 1.1755681069775656;
 
+    // vector<double> init_r_arm(7,0);
+    // init_r_arm[0] = randomDouble(-3.75, 0.65);
+    // init_r_arm[1] = randomDouble(-3.75, 0.65);
+    // init_r_arm[2] = randomDouble(-3.75, 0.65);
+    // init_r_arm[3] = randomDouble(-3.75, 0.65);
+    // init_r_arm[4] = randomDouble(-3.75, 0.65);
+    // init_r_arm[5] = randomDouble(-3.75, 0.65);
+    // init_r_arm[6] = randomDouble(-3.75, 0.65);
+
     LeftContArmState l_arm(init_l_arm);
     RightContArmState r_arm;
 
@@ -878,6 +882,9 @@ bool EnvironmentMonolithic::convertFullState(const ompl::base::State* state, Rob
     base.x(s->as<SE2State>(1)->getX());
     base.y(s->as<SE2State>(1)->getY());
     base.theta(s->as<SE2State>(1)->getYaw());
+
+    //if(base.theta() < 0)
+    //  base.theta(base.theta() + 2*M_PI);
 
     RobotState seed_state(base, r_arm, l_arm);
     RobotPosePtr final_state;
