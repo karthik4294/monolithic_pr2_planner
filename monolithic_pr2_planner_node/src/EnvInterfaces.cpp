@@ -166,7 +166,6 @@ void EnvInterfaces::ompl_spi_init(const monolithic_pr2_planner::CSpaceMgrPtr& cs
     si_->setup();
 
     pdef_.reset(new ompl::base::ProblemDefinition(si_));
-    pathSimplifier = new ompl::geometric::PathSimplifier(si_);
 
 }
 
@@ -618,6 +617,7 @@ bool EnvInterfaces::runPPMAPlanner(int planner_type,
   ompl::base::SpaceInformationPtr si = m_rrt->GetSpaceInformationPtr();
 
   ompl::base::ProblemDefinitionPtr pdef(new ompl::base::ProblemDefinition(si));
+  pathSimplifier = new ompl::geometric::PathSimplifier(si);
   m_full_body_space = m_rrt->GetStateSpacePtr();
   
   FullState ompl_start(m_full_body_space);
@@ -628,7 +628,7 @@ bool EnvInterfaces::runPPMAPlanner(int planner_type,
   pdef->clearGoal();
   pdef->clearStartStates();
   pdef->setStartAndGoalStates(ompl_start,ompl_goal); 
-  
+  pdef->setOptimizationObjective(ompl::base::OptimizationObjectivePtr(new ompl::base::PathLengthOptimizationObjective(si)));
 
   ppma_replan_params.planner_mode = static_cast<ppma_planner::PlannerMode>(req.planner_type);
 
@@ -786,16 +786,6 @@ bool EnvInterfaces::runPPMAPlanner(int planner_type,
 
     ROS_INFO("allocated time is %f", req.allocated_planning_time);
 
-    ompl::base::State* start_get = si->allocState();
-    m_mon_env->GetContState(start_id, start_get);
-    m_mon_env->printContState(start_get);
-    m_mon_env->VisualizeContState(start_get, start_get, false, false);
-
-    ompl::base::State* goal_get = si->allocState();
-    m_mon_env->GetContState(goal_id, goal_get);
-    m_mon_env->printContState(goal_get);
-    m_mon_env->VisualizeContState(goal_get, goal_get, false, false);
-
     double totalTime;
     isPlanFound = m_ppma_planner->replan(&soln, ppma_replan_params, &soln_cost, totalTime);
 
@@ -826,25 +816,25 @@ bool EnvInterfaces::runPPMAPlanner(int planner_type,
         for(unsigned int i=0; i<geo_path.getStateCount(); i++){
             ompl::base::State* state = geo_path.getState(i);
             
-            // RobotState robot_state;
-            // ContBaseState base;
+            RobotState robot_state;
+            ContBaseState base;
             
-            // if (!convertFullState(state, robot_state, base)){
-            //     ROS_ERROR("ik failed on path reconstruction!");
-            // }
-            // vector<double> l_arm, r_arm;
-            // robot_states.push_back(robot_state);
-            // base_states.push_back(base);
+            if (!convertFullState(state, robot_state, base)){
+                ROS_ERROR("ik failed on path reconstruction!");
+            }
+            vector<double> l_arm, r_arm;
+            robot_states.push_back(robot_state);
+            base_states.push_back(base);
 
-            // robot_state.right_arm().getAngles(&r_arm);
-            // robot_state.left_arm().getAngles(&l_arm);
-            // BodyPose bp = base.body_pose();
+            robot_state.right_arm().getAngles(&r_arm);
+            robot_state.left_arm().getAngles(&l_arm);
+            BodyPose bp = base.body_pose();
             
-            // // Visualizer::pviz->visualizeRobot(r_arm, l_arm, bp, 150, "robot", 0);
-            // // usleep(5000);
+            Visualizer::pviz->visualizeRobot(r_arm, l_arm, bp, 150, "robot", 0);
+            usleep(5000);
         }
-        //data.robot_state = robot_states;
-        //data.base = base_states;
+        data.robot_state = robot_states;
+        data.base = base_states;
         data.path_length = geo_path.getStateCount();
         m_stats_writer.setPlannerId(req.planner_type);
         m_stats_writer.write(counter, data);

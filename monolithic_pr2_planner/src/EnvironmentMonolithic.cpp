@@ -757,13 +757,13 @@ int EnvironmentMonolithic::GetContEdgeCost(const ompl::base::State *parent, cons
     ContBaseState parent_base, child_base;
     
     if (!convertFullState(parent, parent_robot_state, parent_base)) {
-      ROS_ERROR("[GetContedgecost]ik failed for visualization!");
+      //ROS_ERROR("[GetContedgecost]ik failed for parent!");
     }
 
     if (!convertFullState(child, child_robot_state, child_base)) {
-      ROS_ERROR("[GetContedgecost]ik failed for visualization!");
+      //ROS_ERROR("[GetContedgecost]ik failed for child!");
     }
-     
+
     double dx = parent_base.x() - child_base.x();
     double dy = parent_base.y()-child_base.y();
     double linear_distance = sqrt(dx*dx + dy*dy);
@@ -792,10 +792,6 @@ void EnvironmentMonolithic::VisualizeContState(const ompl::base::State *child, c
     
     if(is_discrete)
     {
-      if (!convertFullState(parent, parent_robot_state, parent_base)) {
-        ROS_ERROR("[VisualizeContState] Discrete parent ik failed for visualization!");
-      }
-
       if (!convertFullState(child, child_robot_state, child_base)) {
         ROS_ERROR("[VisualizeContState] Discrete child ik failed for visualization!");
       }
@@ -803,12 +799,9 @@ void EnvironmentMonolithic::VisualizeContState(const ompl::base::State *child, c
 
     if(!is_discrete)
     {
-      if (!convertFullState(parent, parent_robot_state, parent_base)) {
-        ROS_ERROR("[VisualizeContState] Continous parent ik failed for visualization!");
-      }
-
       if (!convertFullState(child, child_robot_state, child_base)) {
-        ROS_ERROR("[VisualizeContState] Conitnous child ik failed for visualization!");
+       //ROS_ERROR("[VisualizeContState] Conitnous child ik failed for visualization!");
+       //printContState(child);
       }
     }
 
@@ -832,7 +825,7 @@ void EnvironmentMonolithic::printContState(const ompl::base::State* state)
 {
     const ompl::base::CompoundState* s = dynamic_cast<const ompl::base::CompoundState*> (state);
 
-    ROS_INFO("OBJ STATE: %f %f %f %f %f %f", s->as<VectorState>(0)->values[0], s->as<VectorState>(0)->values[1],
+    ROS_INFO("OBJECT STATE: %f %f %f %f %f %f", s->as<VectorState>(0)->values[0], s->as<VectorState>(0)->values[1],
                                              s->as<VectorState>(0)->values[2], s->as<VectorState>(0)->values[3], 
                                              s->as<VectorState>(0)->values[4], s->as<VectorState>(0)->values[5]);
     ROS_INFO("UPPER ARM ROLL STATE: %f %f", s->as<VectorState>(0)->values[6], s->as<VectorState>(0)->values[7]);
@@ -849,47 +842,40 @@ bool EnvironmentMonolithic::convertFullState(const ompl::base::State* state, Rob
 
     // fix the l_arm angles
     vector<double> init_l_arm(7,0);
-    init_l_arm[0] = (0.038946287971107774);
-    init_l_arm[1] = (1.2146697069025374);
-    init_l_arm[2] = 1.3963556492780154;
-    init_l_arm[3] = -1.1972269899800325;
-    init_l_arm[4] = (-4.616317135720829);
-    init_l_arm[5] = -0.9887266887318599;
-    init_l_arm[6] = 1.1755681069775656;
+    init_l_arm[0] = 0.200000;       
+    init_l_arm[1] = 1.400000;
+    init_l_arm[2] = 1.900000;
+    init_l_arm[3] = -0.400000;
+    init_l_arm[4] = -0.100000;
+    init_l_arm[5] = -1.000000;
+    init_l_arm[6] = 0.000000;
 
-    // vector<double> init_r_arm(7,0);
-    // init_r_arm[0] = randomDouble(-3.75, 0.65);
-    // init_r_arm[1] = randomDouble(-3.75, 0.65);
-    // init_r_arm[2] = randomDouble(-3.75, 0.65);
-    // init_r_arm[3] = randomDouble(-3.75, 0.65);
-    // init_r_arm[4] = randomDouble(-3.75, 0.65);
-    // init_r_arm[5] = randomDouble(-3.75, 0.65);
-    // init_r_arm[6] = randomDouble(-3.75, 0.65);
-
-    LeftContArmState l_arm(init_l_arm);
-    RightContArmState r_arm;
+    vector<double> init_r_arm(7,0);
 
     const ompl::base::CompoundState* s = dynamic_cast<const ompl::base::CompoundState*> (state);
+
+    init_r_arm[2] = (*(s->as<VectorState>(0)))[6];
+
+    LeftContArmState l_arm(init_l_arm);
+    RightContArmState r_arm(init_r_arm);
+
     obj_state.x((*(s->as<VectorState>(0)))[0]);
     obj_state.y((*(s->as<VectorState>(0)))[1]);
     obj_state.z((*(s->as<VectorState>(0)))[2]);
     obj_state.roll((*(s->as<VectorState>(0)))[3]);
     obj_state.pitch((*(s->as<VectorState>(0)))[4]);
     obj_state.yaw((*(s->as<VectorState>(0)))[5]);
-    r_arm.setUpperArmRoll((*(s->as<VectorState>(0)))[6]);
-    l_arm.setUpperArmRoll((*(s->as<VectorState>(0)))[7]);
+    //r_arm.setUpperArmRoll((*(s->as<VectorState>(0)))[6]);
+    //l_arm.setUpperArmRoll((*(s->as<VectorState>(0)))[7]);
     base.z((*(s->as<VectorState>(0)))[8]);
     base.x(s->as<SE2State>(1)->getX());
     base.y(s->as<SE2State>(1)->getY());
     base.theta(s->as<SE2State>(1)->getYaw());
 
-    //if(base.theta() < 0)
-    //  base.theta(base.theta() + 2*M_PI);
-
     RobotState seed_state(base, r_arm, l_arm);
     RobotPosePtr final_state;
 
-    if (!RobotState::computeRobotPose(obj_state.getDiscObjectState(), seed_state, final_state))
+    if (!RobotState::computeRobotPose(DiscObjectState(obj_state), seed_state, final_state))
         return false;
 
     robot_state = *final_state;

@@ -79,13 +79,20 @@ OMPLPR2Planner::OMPLPR2Planner(const CSpaceMgrPtr& cspace, int planner_id):
     m_si = si;
 
     vector<double> init_l_arm(7,0);
-    init_l_arm[0] = (0.038946287971107774);
-    init_l_arm[1] = (1.2146697069025374);
-    init_l_arm[2] = (1.3963556492780154);
-    init_l_arm[3] = -1.1972269899800325;
-    init_l_arm[4] = (-4.616317135720829);
-    init_l_arm[5] = -0.9887266887318599;
-    init_l_arm[6] = 1.1755681069775656;
+    // init_l_arm[0] = (0.038946287971107774);
+    // init_l_arm[1] = (1.2146697069025374);
+    // init_l_arm[2] = (1.3963556492780154);
+    // init_l_arm[3] = -1.1972269899800325;
+    // init_l_arm[4] = (-4.616317135720829);
+    // init_l_arm[5] = -0.9887266887318599;
+    // init_l_arm[6] = 1.1755681069775656;
+    init_l_arm[0] = 0.200000;       
+    init_l_arm[1] = 1.400000;
+    init_l_arm[2] = 1.900000;
+    init_l_arm[3] = -0.400000;
+    init_l_arm[4] = -0.100000;
+    init_l_arm[5] = -1.000000;
+    init_l_arm[6] = 0.000000;
 
     m_collision_checker = new omplFullBodyCollisionChecker(si);
     m_collision_checker->initialize(cspace, init_l_arm);
@@ -140,9 +147,10 @@ bool OMPLPR2Planner::createStartGoal(FullState& ompl_start, FullState& ompl_goal
     // may need to normalize the theta?
     double normalized_theta = angles::normalize_angle(base_start.theta());
     ompl_start->as<SE2State>(1)->setYaw(normalized_theta);
-    // ROS_INFO("obj xyz (%f %f %f) base xytheta (%f %f %f)",
-    //          obj_state.x(), obj_state.y(), obj_state.z(),
-    //          base_start.x(), base_start.y(), normalized_theta);
+    ROS_INFO("Start : obj xyzrpy (%f %f %f %f %f %f) base xyztheta (%f %f %f %f) Upper arm roll (%f %f)",
+              obj_state.x(), obj_state.y(), obj_state.z(), obj_state.roll(), obj_state.pitch(), obj_state.yaw(),
+              base_start.x(), base_start.y(), base_start.z(), normalized_theta,
+              right_arm_start.getUpperArmRollAngle(), left_arm_start.getUpperArmRollAngle());
 
     ContObjectState goal_obj_state = req.right_arm_goal.getObjectStateRelBody();
     (*(ompl_goal->as<VectorState>(0)))[0] = goal_obj_state.x();
@@ -158,6 +166,13 @@ bool OMPLPR2Planner::createStartGoal(FullState& ompl_start, FullState& ompl_goal
     normalized_theta = angles::normalize_angle(req.base_goal.theta());
     ompl_goal->as<SE2State>(1)->setYaw(normalized_theta);
     
+    ROS_INFO("Goal : obj xyzrpy (%f %f %f %f %f %f) base xyztheta (%f %f %f %f) Upper arm roll (%f %f)",
+          goal_obj_state.x(), goal_obj_state.y(), goal_obj_state.z(), goal_obj_state.roll(), goal_obj_state.pitch(), goal_obj_state.yaw(),
+          req.base_goal.x(), req.base_goal.y(), req.base_goal.z(), normalized_theta,
+          req.right_arm_goal.getUpperArmRollAngle(), req.left_arm_goal.getUpperArmRollAngle());
+
+    getchar();
+
     return (planner->getSpaceInformation()->isValid(ompl_goal.get()) && 
             planner->getSpaceInformation()->isValid(ompl_start.get()));
 }
