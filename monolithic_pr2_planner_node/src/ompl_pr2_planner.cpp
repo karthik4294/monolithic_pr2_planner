@@ -21,7 +21,7 @@ ompl::base::OptimizationObjectivePtr getThresholdPathLengthObj(const ompl::base:
     }
     else{
         ompl::base::OptimizationObjectivePtr obj(new ompl::base::PathLengthOptimizationObjective(si));
-	obj->setCostThreshold(ompl::base::Cost(10.51));               
+	   //obj->setCostThreshold(ompl::base::Cost(10.51));               
         return obj;
     }
 }
@@ -272,16 +272,14 @@ bool OMPLPR2Planner::planPathCallback(SearchRequestParams& search_request, int t
         pdef->setGoal(temp_goal2);
     //}
     double t0 = ros::Time::now().toSec();
-    if(m_planner_id == RRTSTAR_NUM || m_planner_id == RRTSTARFIRSTSOL_NUM)
-        planner->solve(m_allocated_planning_time);
-    else
-        planner->solve(m_allocated_planning_time);
+    ROS_INFO("Allocated planning time %f", m_allocated_planning_time);
+    ompl::base::PlannerStatus ompl_res = planner->solve(m_allocated_planning_time);
     double t1 = ros::Time::now().toSec();
     double planning_time = t1-t0;
-    ompl::base::PathPtr path = planner->getProblemDefinition()->getSolutionPath();
     RRTData data;
-    if (path){
-        ROS_INFO("OMPL found a solution!");
+    ompl::base::PathPtr path = planner->getProblemDefinition()->getSolutionPath();
+    if (ompl_res.asString().compare("Exact solution") == 0 && path){
+        ROS_INFO("OMPL found exact solution! Plan time : %f", planning_time);
         data.planned = true;
         ompl::geometric::PathGeometric geo_path = static_cast<ompl::geometric::PathGeometric&>(*path);
         double t2 = ros::Time::now().toSec();
@@ -323,7 +321,7 @@ bool OMPLPR2Planner::planPathCallback(SearchRequestParams& search_request, int t
         m_stats_writer.write(trial_id, data);
     } else {
         data.planned = false;
-        ROS_ERROR("failed to plan");
+        ROS_ERROR("OMPL failed to plan in allocated time");
         return false;
     }
 

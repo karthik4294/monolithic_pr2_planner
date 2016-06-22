@@ -29,8 +29,7 @@ EnvInterfaces::EnvInterfaces(
   m_nodehandle(nh),
   m_env(env), m_collision_space_interface(new CollisionSpaceInterface(
                                             env->getCollisionSpace(), env->getHeuristicMgr())),
-  m_generator(new StartGoalGenerator(env->getCollisionSpace())),
-  ppma_replan_params(300.0)
+  m_generator(new StartGoalGenerator(env->getCollisionSpace()))
   // m_rrt(new OMPLPR2Planner(env->getCollisionSpace(), RRT)),
   // m_prm(new OMPLPR2Planner(env->getCollisionSpace(), PRM_P)),
   // m_rrtstar(new OMPLPR2Planner(env->getCollisionSpace(), RRTSTAR)),
@@ -62,8 +61,7 @@ EnvInterfaces::EnvInterfaces(
   m_nodehandle(nh),
   m_mon_env(env), m_collision_space_interface(new CollisionSpaceInterface(
                                             env->getCollisionSpace(), env->getHeuristicMgr())),
-  m_generator(new StartGoalGenerator(env->getCollisionSpace())),
-  ppma_replan_params(300.0)
+  m_generator(new StartGoalGenerator(env->getCollisionSpace()))
   // m_rrt(new OMPLPR2Planner(env->getCollisionSpace(), RRT)),
   // m_prm(new OMPLPR2Planner(env->getCollisionSpace(), PRM_P)),
   // m_rrtstar(new OMPLPR2Planner(env->getCollisionSpace(), RRTSTAR)),
@@ -74,20 +72,6 @@ EnvInterfaces::EnvInterfaces(
   m_collision_space_interface->mutex = &mutex;
 
   getParams();
-  bool forward_search = true;
-  double allocated_time_secs = 30.0;
-
-  ppma_replan_params.initial_eps = 100.0;
-  ppma_replan_params.final_eps = 100.0;
-  ppma_replan_params.return_first_solution = false;
-
-  //RobotState::setPlanningMode(PlanningModes::RIGHT_ARM_MOBILE);
-
-  //Setup ompl spaceinformation for hstar
-  //ompl_spi_init(env->getCollisionSpace());
-
-  //m_ppma_planner.reset(new PPMAPlanner(si_, m_mon_env.get(), forward_search, allocated_time_secs, &ppma_replan_params));
-  //m_ppma_planner->setProblemDefinition(ompl::base::ProblemDefinitionPtr(pdef_));
   
   m_costmap_pub = m_nodehandle.advertise<nav_msgs::OccupancyGrid>("costmap_pub",
                                                                   1);
@@ -382,12 +366,12 @@ bool EnvInterfaces::experimentCallback(GetMobileArmPlan::Request &req,
       m_nodehandle.getParam("/monolithic_pr2_planner_node/experiments/seed",
                             environment_seed);
 
-      if (!m_rrt->checkRequest(*search_request)) {
+      if (!m_ompl_planner->checkRequest(*search_request)) {
         ROS_WARN("bad start goal for ompl");
       } else {
         // Here starts the actual planning requests
         start_goal.first.visualize();
-        if(req.planner_type == mha_planner::PlannerType::SMHA || req.planner_type == mha_planner::PlannerType::IMHA){
+        if( (req.planner_type == mha_planner::PlannerType::SMHA || req.planner_type == mha_planner::PlannerType::IMHA)  && (!req.use_ompl) ){
           runMHAPlanner(monolithic_pr2_planner::T_SMHA, "smha_", req, res,
                       search_request, counter);
           runMHAPlanner(monolithic_pr2_planner::T_IMHA, "imha_", req, res,
@@ -474,17 +458,17 @@ bool EnvInterfaces::runMHAPlanner(int planner_type,
   if (req.use_ompl) {
     ROS_INFO("rrt init");
     RobotState::setPlanningMode(PlanningModes::RIGHT_ARM_MOBILE);
-    m_rrt.reset(new OMPLPR2Planner(m_env->getCollisionSpace(), req.planner_type));
+    m_ompl_planner.reset(new OMPLPR2Planner(m_env->getCollisionSpace(), req.planner_type));
     ROS_INFO("rrt check request");
 
-    if (!m_rrt->checkRequest(*search_request)) {
+    if (!m_ompl_planner->checkRequest(*search_request)) {
       ROS_WARN("bad start goal for ompl");
     }
 
     ROS_INFO("rrt plan");
-    m_rrt->setPlanningTime(req.allocated_planning_time);
+    m_ompl_planner->setPlanningTime(req.allocated_planning_time);
     double t0 = ros::Time::now().toSec();
-    bool found_path = m_rrt->planPathCallback(*search_request, counter,
+    bool found_path = m_ompl_planner->planPathCallback(*search_request, counter,
                                               m_stats_writer);
     double t1 = ros::Time::now().toSec();
     ROS_INFO("rrt done planning");
@@ -572,35 +556,16 @@ bool EnvInterfaces::runPPMAPlanner(int planner_type,
                                   SearchRequestParamsPtr search_request,
                                   int counter) {
   int start_id, goal_id;
-  bool return_first_soln = true;
+  bool return_first_soln = false;
   bool forward_search = true;
-  double allocated_time_secs = req.allocated_planning_time;
   clock_t total_planning_time;
   bool isPlanFound;
   vector<double> stats;
   vector<string> stat_names;
   vector<FullBodyState> states;
 
-  /*
-  int planner_queues = NUM_SMHA_HEUR;
-  if (planner_type == monolithic_pr2_planner::T_EES)
-      planner_queues = 3;
-  else if (planner_type == monolithic_pr2_planner::T_IMHA)
-      planner_queues = NUM_IMHA_HEUR;
-      */
-
-
   ros::NodeHandle ph("~");
-  // bool use_new_heuristics;
-  // ph.param("use_new_heuristics", use_new_heuristics, false);
-  // int planner_queues;
-
-  // if (!use_new_heuristics) {
-  //   planner_queues = 4;
-  // } else {
-  //   planner_queues = 20;
-  // }
-
+ 
   printf("\n");
   ROS_INFO("Initialize environment");
   m_mon_env->reset();
@@ -628,9 +593,13 @@ bool EnvInterfaces::runPPMAPlanner(int planner_type,
   pdef->setStartAndGoalStates(ompl_start,ompl_goal); 
   pdef->setOptimizationObjective(ompl::base::OptimizationObjectivePtr(new ompl::base::PathLengthOptimizationObjective(si)));
 
+  PPMAReplanParams ppma_replan_params(req.allocated_planning_time);
+  ppma_replan_params.initial_eps = EPS;
+  ppma_replan_params.final_eps = EPS;
+  ppma_replan_params.return_first_solution = return_first_soln;
   ppma_replan_params.planner_mode = static_cast<ppma_planner::PlannerMode>(req.planner_type);
 
-  m_ppma_planner.reset(new PPMAPlanner(si, m_mon_env.get(), forward_search, allocated_time_secs, &ppma_replan_params));
+  m_ppma_planner.reset(new PPMAPlanner(si, m_mon_env.get(), forward_search, req.allocated_planning_time, &ppma_replan_params));
   m_ppma_planner->setup();
   m_ppma_planner->setProblemDefinition(ompl::base::ProblemDefinitionPtr(pdef));
 
@@ -660,18 +629,18 @@ bool EnvInterfaces::runPPMAPlanner(int planner_type,
   }
 
   if (req.use_ompl) {
-    ROS_INFO("OMPL planner init");
+    ROS_INFO("OMPL planner init : %d", req.planner_type);
     RobotState::setPlanningMode(PlanningModes::RIGHT_ARM_MOBILE);
-    m_rrt.reset(new OMPLPR2Planner(m_mon_env->getCollisionSpace(), static_cast<int>(req.planner_type) ));
-    ROS_INFO("rrt check request");
+    m_ompl_planner.reset(new OMPLPR2Planner(m_mon_env->getCollisionSpace(), static_cast<int>(req.planner_type) ));
+    ROS_INFO("ompl check request");
 
-    if (!m_rrt->checkRequest(*search_request)) {
+    if (!m_ompl_planner->checkRequest(*search_request)) {
       ROS_WARN("bad start goal for ompl");
     }
 
-    m_rrt->setPlanningTime(req.allocated_planning_time);
+    m_ompl_planner->setPlanningTime(req.allocated_planning_time);
     double t0 = ros::Time::now().toSec();
-    bool found_path = m_rrt->planPathCallback(*search_request, counter,
+    bool found_path = m_ompl_planner->planPathCallback(*search_request, counter,
                                               m_stats_writer);
     double t1 = ros::Time::now().toSec();
 
@@ -743,8 +712,8 @@ bool EnvInterfaces::runPPMAPlanner(int planner_type,
             robot_state.left_arm().getAngles(&l_arm);
             BodyPose bp = base.body_pose();
             
-            Visualizer::pviz->visualizeRobot(r_arm, l_arm, bp, 150, "robot", 0);
-            usleep(5000);
+            //Visualizer::pviz->visualizeRobot(r_arm, l_arm, bp, 150, "robot", 0);
+            //usleep(5000);
         }
         data.robot_state = robot_states;
         data.base = base_states;
@@ -816,7 +785,7 @@ bool EnvInterfaces::planPathCallback(GetMobileArmPlan::Request &req,
 
   double total_planning_time = clock();
   bool forward_search = true;
-  if(req.planner_type == mha_planner::PlannerType::SMHA){
+  if(req.planner_type == mha_planner::PlannerType::SMHA && (!req.use_ompl)){
     isPlanFound = runMHAPlanner(monolithic_pr2_planner::T_SMHA, "smha_", req, res,
                               search_request, counter);
   }else{
@@ -887,7 +856,7 @@ bool EnvInterfaces::demoCallback(GetMobileArmPlan::Request &req,
   bool isPlanFound;
 
   bool forward_search = true;
-  if(req.planner_type == mha_planner::PlannerType::SMHA){
+  if(req.planner_type == mha_planner::PlannerType::SMHA  && (!req.use_ompl)){
     isPlanFound = runMHAPlanner(monolithic_pr2_planner::T_SMHA, "smha_", req, res,
                               search_request, counter);
   }else{

@@ -138,13 +138,10 @@ namespace monolithic_pr2_planner_node {
 
             std::unique_ptr<StartGoalGenerator> m_generator;
             std::unique_ptr<OMPLPR2Planner> m_rrt;
-            std::unique_ptr<OMPLPR2Planner> m_prm;
-            std::unique_ptr<OMPLPR2Planner> m_rrtstar;
-            std::unique_ptr<OMPLPR2Planner> m_rrtstar_first_sol;
+            std::unique_ptr<OMPLPR2Planner> m_ompl_planner;
             StatsWriter m_stats_writer;
 
             //PPMA
-            PPMAReplanParams ppma_replan_params;
             ompl::base::SpaceInformationPtr si_;
             ompl::base::StateSpacePtr fullBodySpace;
             omplFullBodyCollisionChecker* m_collision_checker;
