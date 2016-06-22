@@ -34,27 +34,39 @@ void StatsWriter::write(int trial_id, RRTData data){
     //if (m_planner_id == RRTSTAR)
     //    ROS_INFO("writing RRTStar stats");
     stringstream ss;
-    if (m_planner_id == PRM_P)
+    if (m_planner_id == 1)//ompl_planner::PlannerType::PRM_P)
         ss << m_current_path.str().c_str() << "prm_" << std::setfill('0') << std::setw(2) << trial_id << ".stats";
-    if (m_planner_id == RRT)
+    if (m_planner_id == 0)//ompl_planner::PlannerType::RRT)
         ss << m_current_path.str().c_str() << "rrt_" << std::setfill('0') << std::setw(2) << trial_id << ".stats";
-    if (m_planner_id == RRTSTAR)
+    if (m_planner_id == 2)//ompl_planner::PlannerType::RRTCONNECT)
+        ss << m_current_path.str().c_str() << "rrtconnect_" << std::setfill('0') << std::setw(2) << trial_id << ".stats";
+    if (m_planner_id == 3)//ompl_planner::PlannerType::RRTSTAR)
         ss << m_current_path.str().c_str() << "rrtstar_" << std::setfill('0') << std::setw(2) << trial_id << ".stats";
-    if (m_planner_id == RRTSTARFIRSTSOL)
+    if (m_planner_id == 4)//ompl_planner::PlannerType::RRTSTARFIRSTSOL)
       ss << m_current_path.str().c_str() << "rrtstarfirstsol_" << std::setfill('0') << std::setw(2) << trial_id << ".stats";
+    if (m_planner_id == 5)//ompl_planner::PlannerType::BITSTAR)
+        ss << m_current_path.str().c_str() << "bitstar_" << std::setfill('0') << std::setw(2) << trial_id << ".stats";
+    if (m_planner_id == 6)//ompl_planner::PlannerType::BITSTARFIRSTSOL)
+      ss << m_current_path.str().c_str() << "bitstarfirstsol_" << std::setfill('0') << std::setw(2) << trial_id << ".stats";
     ROS_DEBUG_NAMED(HEUR_LOG, "Opening file : %s", ss.str().c_str());
     FILE* stats = fopen(ss.str().c_str(), "w");
     if (data.planned){
         fprintf(stats, "%f %f %lu\n", data.plan_time, data.shortcut_time, data.path_length);
         stringstream ss2;
-        if (m_planner_id == PRM_P)
+        if (m_planner_id == 1)//ompl_planner::PlannerType::PRM_P)
             ss2 << m_current_path.str().c_str() << "prm_" << std::setfill('0') << std::setw(2) << trial_id << ".path";
-        if (m_planner_id == RRT)
+        if (m_planner_id == 0)//ompl_planner::PlannerType::RRT)
             ss2 << m_current_path.str().c_str() << "rrt_" << std::setfill('0') << std::setw(2) << trial_id << ".path";
-        if (m_planner_id == RRTSTAR)
+        if (m_planner_id == 2)//ompl_planner::PlannerType::RRTCONNECT)
+            ss2 << m_current_path.str().c_str() << "rrtconnect_" << std::setfill('0') << std::setw(2) << trial_id << ".path";
+        if (m_planner_id == 3)//ompl_planner::PlannerType::RRTSTAR)
             ss2 << m_current_path.str().c_str() << "rrtstar_" << std::setfill('0') << std::setw(2) << trial_id << ".path";
-        if (m_planner_id == RRTSTARFIRSTSOL)
+        if (m_planner_id == 4)//ompl_planner::PlannerType::RRTSTARFIRSTSOL)
             ss2 << m_current_path.str().c_str() << "rrtstarfirstsol_" << std::setfill('0') << std::setw(2) << trial_id << ".path";
+        if (m_planner_id == 5)//ompl_planner::PlannerType::BITSTAR)
+            ss2 << m_current_path.str().c_str() << "bitstar_" << std::setfill('0') << std::setw(2) << trial_id << ".path";
+        if (m_planner_id == 6)//ompl_planner::PlannerType::BITSTARFIRSTSOL)
+            ss2 << m_current_path.str().c_str() << "bitstarfirstsol_" << std::setfill('0') << std::setw(2) << trial_id << ".path";
         FILE* path = fopen(ss2.str().c_str(), "w");
         for (size_t i=0; i < data.robot_state.size(); i++){
             vector<double> l_arm;

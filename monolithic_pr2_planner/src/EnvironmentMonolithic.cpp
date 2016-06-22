@@ -385,6 +385,23 @@ void EnvironmentMonolithic::GetSuccs(int q_id, int sourceStateID, vector<int>* s
                             successor->id());
             successor->printToDebug(MPRIM_LOG);
 
+            RobotState succ_pose = successor->robot_pose();
+
+            //************************DEBUG*********************//        
+            // ROS_INFO("Succ:");
+            // ContBaseState base_state = succ_pose.getContBaseState();
+            // RightContArmState right_arm_state = succ_pose.right_arm();
+            // LeftContArmState left_arm_state = succ_pose.left_arm();
+            // ContObjectState obj_state = succ_pose.getObjectStateRelMap();
+            // std::vector<double> r_angles(7,0);
+            // right_arm_state.getAngles(&r_angles);
+            // ROS_INFO("Object : %f %f %f %f %f %f", obj_state.x(), obj_state.y(), obj_state.z(), obj_state.roll(), obj_state.pitch(), obj_state.yaw() );
+            // ROS_INFO("Upper arm Roll : %f %f", right_arm_state.getUpperArmRollAngle(), left_arm_state.getUpperArmRollAngle());
+            // ROS_INFO("Right arm angles : %f %f %f %f %f %f %f", r_angles[0],r_angles[1],r_angles[2],r_angles[3],r_angles[4],r_angles[5],r_angles[6]) ;        
+            // ROS_INFO("Torso : %f", base_state.z());
+            // ROS_INFO("Base : %f %f %f", base_state.x(), base_state.y(), base_state.theta());
+            //************************DEBUG*********************//
+
 
             if (m_goal->isSatisfiedBy(successor)){
                 m_goal->storeAsSolnState(successor);
@@ -698,7 +715,7 @@ void EnvironmentMonolithic::GetNearestLatticeState(const ompl::base::State *cont
   ContBaseState continous_base_state;
   
   if (!convertFullState(continuous_state, continous_robot_state, continous_base_state)) {
-    ROS_ERROR("[GetNearestLatticeState]ik failed for visualization!");
+    //ROS_ERROR("[GetNearestLatticeState]ik failed for visualization!");
   }
 
   GraphStatePtr continous_graph_state = make_shared<GraphState>(continous_robot_state);
@@ -706,8 +723,7 @@ void EnvironmentMonolithic::GetNearestLatticeState(const ompl::base::State *cont
   *nearest_lattice_state_id = continous_graph_state->id();
 
   GetContState(*nearest_lattice_state_id, nearest_lattice_state);
-  ROS_INFO("Nearest Lattice State:");
-  printContState(nearest_lattice_state);
+
 }
 
 void EnvironmentMonolithic::GetContState(int state_id, ompl::base::State *state){
@@ -742,7 +758,7 @@ int EnvironmentMonolithic::GetContStateID(const ompl::base::State* state){
   RobotState robot_state;
   ContBaseState base;
   if (!convertFullState(state, robot_state, base)) {
-    ROS_ERROR("[GetContStateid]ik failed for visualization!");
+    //ROS_ERROR("[GetContStateid]ik failed for visualization!");
   }
   GraphStatePtr graph_state = make_shared<GraphState>(robot_state);
   m_hash_mgr->save(graph_state);
@@ -793,7 +809,7 @@ void EnvironmentMonolithic::VisualizeContState(const ompl::base::State *child, c
     if(is_discrete)
     {
       if (!convertFullState(child, child_robot_state, child_base)) {
-        ROS_ERROR("[VisualizeContState] Discrete child ik failed for visualization!");
+        //ROS_ERROR("[VisualizeContState] Discrete child ik failed for visualization!");
       }
     }
 

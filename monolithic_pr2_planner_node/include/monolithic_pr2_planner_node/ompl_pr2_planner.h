@@ -8,9 +8,11 @@
 #include <ompl/base/State.h>
 #include <ompl/base/StateValidityChecker.h>
 #include <ompl/base/objectives/PathLengthOptimizationObjective.h>
+#include <ompl/geometric/planners/rrt/RRT.h>
 #include <ompl/geometric/planners/rrt/RRTConnect.h>
 #include <ompl/geometric/planners/prm/PRM.h>
 #include <ompl/geometric/planners/rrt/RRTstar.h>
+#include <ompl/geometric/planners/bitstar/BITstar.h>
 #include <ompl/base/goals/GoalState.h>
 #include <monolithic_pr2_planner_node/ompl_collision_checker.h>
 #include <memory>
@@ -25,10 +27,16 @@ typedef ompl::base::SE2StateSpace::StateType SE2State;
 typedef ompl::base::ScopedState<ompl::base::CompoundStateSpace> FullState;
 typedef monolithic_pr2_planner_node::GetMobileArmPlan::Request NodeRequest;
 
-#define RRT 1
-#define PRM_P 2
-#define RRTSTAR 3
-#define RRTSTARFIRSTSOL 4
+
+#define RRT_NUM 0
+#define PRM_P_NUM 1
+#define RRTCONNECT_NUM 2 
+#define RRTSTAR_NUM 3
+#define RRTSTARFIRSTSOL_NUM 4
+#define BITSTAR_NUM 5 
+#define BITSTARFIRSTSOL_NUM 6
+
+
 class OMPLPR2Planner{
     public:
         OMPLPR2Planner(const monolithic_pr2_planner::CSpaceMgrPtr& cspace, int planner_id);
@@ -41,7 +49,7 @@ class OMPLPR2Planner{
         ompl::base::StateSpacePtr GetStateSpacePtr() { return fullBodySpace;}
         ompl::base::ProblemDefinition* GetProblemDefinition() { return pdef;}
     private:
-        bool convertFullState(ompl::base::State* state,
+        bool convertFullState(const ompl::base::State* state,
                               monolithic_pr2_planner::RobotState& robot_state,
                               monolithic_pr2_planner::ContBaseState& base);
         ompl::base::SpaceInformationPtr m_si;

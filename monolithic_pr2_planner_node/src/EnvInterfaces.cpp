@@ -19,8 +19,6 @@ using namespace boost;
 using namespace std;
 using namespace KDL;
 
-
-bool use_ppma = true;
 // constructor automatically launches the collision space interface, which only
 // loads it up with a pointer to the collision space mgr. it doesn't bind to any
 // topic.
@@ -476,7 +474,7 @@ bool EnvInterfaces::runMHAPlanner(int planner_type,
   if (req.use_ompl) {
     ROS_INFO("rrt init");
     RobotState::setPlanningMode(PlanningModes::RIGHT_ARM_MOBILE);
-    m_rrt.reset(new OMPLPR2Planner(m_env->getCollisionSpace(), RRT));
+    m_rrt.reset(new OMPLPR2Planner(m_env->getCollisionSpace(), req.planner_type));
     ROS_INFO("rrt check request");
 
     if (!m_rrt->checkRequest(*search_request)) {
@@ -612,7 +610,7 @@ bool EnvInterfaces::runPPMAPlanner(int planner_type,
   RobotState::setPlanningMode(PlanningModes::RIGHT_ARM_MOBILE);
 
 
-  m_rrt.reset(new OMPLPR2Planner(m_mon_env->getCollisionSpace(), RRT));
+  m_rrt.reset(new OMPLPR2Planner(m_mon_env->getCollisionSpace(), RRT_NUM));
   // ompl::base::SpaceInformationPtr si(new ompl::base::SpaceInformation(*m_rrt->GetSpaceInformationPtr()));
   ompl::base::SpaceInformationPtr si = m_rrt->GetSpaceInformationPtr();
 
@@ -661,106 +659,21 @@ bool EnvInterfaces::runPPMAPlanner(int planner_type,
     return true;
   }
 
-  // LeftContArmState left_arm_start = search_request->left_arm_start;
-  // RightContArmState right_arm_start = search_request->right_arm_start;
-  // ContBaseState base_start = search_request->base_start;
-  // ContObjectState obj_state = right_arm_start.getObjectStateRelBody();
-  
-  // //set start
-  // ompl::base::StateSpacePtr space(m_ppma_planner->getSpaceInformation()->getStateSpace());
-  // ompl::base::CompoundState *ompl_start = dynamic_cast<ompl::base::CompoundState*> (space->allocState());
-
-  // ompl_start->as<VectorState>(0)->values[0] = obj_state.x();
-  // ompl_start->as<VectorState>(0)->values[1] = obj_state.y();
-  // ompl_start->as<VectorState>(0)->values[2] = obj_state.z();
-  // ompl_start->as<VectorState>(0)->values[3] = obj_state.roll();
-  // ompl_start->as<VectorState>(0)->values[4] = obj_state.pitch();
-  // ompl_start->as<VectorState>(0)->values[5] = obj_state.yaw();
-  // ompl_start->as<VectorState>(0)->values[6] = right_arm_start.getUpperArmRollAngle();
-  // ompl_start->as<VectorState>(0)->values[7] = left_arm_start.getUpperArmRollAngle();
-  // ompl_start->as<VectorState>(0)->values[8] = base_start.z();
-
-  // ompl_start->as<SE2State>(1)->setX(base_start.x());
-  // ompl_start->as<SE2State>(1)->setY(base_start.y());
-  // ompl_start->as<SE2State>(1)->setYaw(angles::normalize_angle(base_start.theta()));
-
-  // ROS_INFO("Start Object: %f %f %f %f %f %f", obj_state.x(), obj_state.y(), obj_state.z(), obj_state.roll(), obj_state.pitch(), obj_state.yaw());
-  
-  // ROS_INFO("Start upper arm roll: %f %f", right_arm_start.getUpperArmRollAngle(), left_arm_start.getUpperArmRollAngle());
-  
-  // ROS_INFO("Start torso: %f", base_start.z());
-
-  // ROS_INFO("Start base: %f %f %f", base_start.x(), base_start.y(), angles::normalize_angle(base_start.theta()) );
-
-
-
-  // if(m_ppma_planner->getSpaceInformation()->isValid(ompl_start))
-  //   ROS_INFO("[ompl] Start state is valid.");
-  // else
-  //   ROS_ERROR("[ompl] Start state is NOT valid.");
-
-  // getchar();
-
-  // LeftContArmState left_arm_goal = search_request->left_arm_goal;
-  // RightContArmState right_arm_goal = search_request->right_arm_goal;
-  // ContBaseState base_goal = search_request->base_goal;
-  // ContObjectState goal_obj_state = right_arm_goal.getObjectStateRelBody();
-
-  // //set goal
-  // ompl::base::CompoundState *ompl_goal = dynamic_cast<ompl::base::CompoundState*> (space->allocState());
-
-  // ompl_goal->as<VectorState>(0)->values[0] = goal_obj_state.x();
-  // ompl_goal->as<VectorState>(0)->values[1] = goal_obj_state.y();
-  // ompl_goal->as<VectorState>(0)->values[2] = goal_obj_state.z();
-  // ompl_goal->as<VectorState>(0)->values[3] = goal_obj_state.roll();
-  // ompl_goal->as<VectorState>(0)->values[4] = goal_obj_state.pitch();
-  // ompl_goal->as<VectorState>(0)->values[5] = goal_obj_state.yaw();
-  // ompl_goal->as<VectorState>(0)->values[6] = right_arm_goal.getUpperArmRollAngle();
-  // ompl_goal->as<VectorState>(0)->values[7] = left_arm_goal.getUpperArmRollAngle();
-  // ompl_goal->as<VectorState>(0)->values[8] = base_goal.z();
-
-  // ompl_goal->as<SE2State>(1)->setX(base_goal.x());
-  // ompl_goal->as<SE2State>(1)->setY(base_goal.y());
-  // ompl_goal->as<SE2State>(1)->setYaw(angles::normalize_angle(base_goal.theta()));
-
-  // ROS_INFO("Goal Object: %f %f %f %f %f %f", goal_obj_state.x(), goal_obj_state.y(), goal_obj_state.z(), goal_obj_state.roll(), goal_obj_state.pitch(), goal_obj_state.yaw());
-  
-  // ROS_INFO("Goal upper arm roll: %f %f", right_arm_goal.getUpperArmRollAngle(), left_arm_goal.getUpperArmRollAngle());
-  
-  // ROS_INFO("Goal torso: %f", base_goal.z());
-
-  // ROS_INFO("Goal base: %f %f %f", base_goal.x(), base_goal.y(), angles::normalize_angle(base_goal.theta()) );
-
-  // if(m_ppma_planner->getSpaceInformation()->isValid(ompl_goal))
-  //   ROS_INFO("[ompl] Goal state is valid.");
-  // else
-  //   ROS_ERROR("[ompl] Goal state is NOT valid.");
-
-  // pdef_->clearGoal();
-  // pdef_->clearStartStates();
-  // pdef_->clearSolutionPaths();
-  // pdef_->setStartAndGoalStates(ompl_start,ompl_goal);
-  // pdef_->setOptimizationObjective(ompl::base::OptimizationObjectivePtr(new ompl::base::PathLengthOptimizationObjective(si_)));
-
-  // m_ppma_planner->setProblemDefinition(pdef_);
-
   if (req.use_ompl) {
-    ROS_INFO("rrt init");
+    ROS_INFO("OMPL planner init");
     RobotState::setPlanningMode(PlanningModes::RIGHT_ARM_MOBILE);
-    m_rrt.reset(new OMPLPR2Planner(m_mon_env->getCollisionSpace(), RRT));
+    m_rrt.reset(new OMPLPR2Planner(m_mon_env->getCollisionSpace(), static_cast<int>(req.planner_type) ));
     ROS_INFO("rrt check request");
 
     if (!m_rrt->checkRequest(*search_request)) {
       ROS_WARN("bad start goal for ompl");
     }
 
-    ROS_INFO("rrt plan");
     m_rrt->setPlanningTime(req.allocated_planning_time);
     double t0 = ros::Time::now().toSec();
     bool found_path = m_rrt->planPathCallback(*search_request, counter,
                                               m_stats_writer);
     double t1 = ros::Time::now().toSec();
-    ROS_INFO("rrt done planning");
 
     res.stats_field_names.clear();
     res.stats_field_names.push_back("total_plan_time");

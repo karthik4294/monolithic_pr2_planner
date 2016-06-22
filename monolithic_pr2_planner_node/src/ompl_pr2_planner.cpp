@@ -13,7 +13,7 @@ using namespace monolithic_pr2_planner_node;
 ompl::base::OptimizationObjectivePtr getThresholdPathLengthObj(const ompl::base::SpaceInformationPtr& si,
     int planner_id)
 {
-    if(planner_id == RRTSTARFIRSTSOL){
+    if(planner_id == RRTSTARFIRSTSOL_NUM || planner_id == BITSTARFIRSTSOL_NUM){
         ompl::base::OptimizationObjectivePtr obj(new ompl::base::PathLengthOptimizationObjective(si));
 	obj->setCostThreshold(ompl::base::Cost(10000000.51));        
         return obj;
@@ -105,20 +105,25 @@ OMPLPR2Planner::OMPLPR2Planner(const CSpaceMgrPtr& cspace, int planner_id):
     //Define a ProblemDefinition (a start/goal pair)
     pdef = new ompl::base::ProblemDefinition(si);
 
-    if (planner_id == RRT)
+    if (planner_id == RRT_NUM)
+        planner = new ompl::geometric::RRT(si);
+    else if (planner_id == RRTCONNECT_NUM)
         planner = new ompl::geometric::RRTConnect(si);
-    else if (planner_id == PRM_P)
+    else if (planner_id == PRM_P_NUM)
         planner = new ompl::geometric::PRM(si);
-    else if (planner_id == RRTSTAR || planner_id == RRTSTARFIRSTSOL)
+    else if (planner_id == RRTSTAR_NUM || planner_id == RRTSTARFIRSTSOL_NUM)
         planner = new ompl::geometric::RRTstar(si);
+    else if (planner_id == BITSTAR_NUM || planner_id == BITSTARFIRSTSOL_NUM)
+        planner = new ompl::geometric::BITstar(si);
     else
         ROS_ERROR("invalid planner id!");
 
-    planner->setup();
-    if (planner_id == RRTSTAR || planner_id == RRTSTARFIRSTSOL){
+    if (planner_id == RRTSTAR_NUM || planner_id == RRTSTARFIRSTSOL_NUM || 
+        planner_id == BITSTAR_NUM || planner_id == BITSTARFIRSTSOL_NUM){
         pdef->setOptimizationObjective(getThresholdPathLengthObj(si, planner_id));
     }
     planner->setProblemDefinition(ompl::base::ProblemDefinitionPtr(pdef));
+    planner->setup();
     pathSimplifier = new ompl::geometric::PathSimplifier(si);
     ROS_INFO("finished initializing OMPL planner");
 }
@@ -147,10 +152,10 @@ bool OMPLPR2Planner::createStartGoal(FullState& ompl_start, FullState& ompl_goal
     // may need to normalize the theta?
     double normalized_theta = angles::normalize_angle(base_start.theta());
     ompl_start->as<SE2State>(1)->setYaw(normalized_theta);
-    ROS_INFO("Start : obj xyzrpy (%f %f %f %f %f %f) base xyztheta (%f %f %f %f) Upper arm roll (%f %f)",
-              obj_state.x(), obj_state.y(), obj_state.z(), obj_state.roll(), obj_state.pitch(), obj_state.yaw(),
-              base_start.x(), base_start.y(), base_start.z(), normalized_theta,
-              right_arm_start.getUpperArmRollAngle(), left_arm_start.getUpperArmRollAngle());
+    // ROS_INFO("Start : obj xyzrpy (%f %f %f %f %f %f) base xyztheta (%f %f %f %f) Upper arm roll (%f %f)",
+    //           obj_state.x(), obj_state.y(), obj_state.z(), obj_state.roll(), obj_state.pitch(), obj_state.yaw(),
+    //           base_start.x(), base_start.y(), base_start.z(), normalized_theta,
+    //           right_arm_start.getUpperArmRollAngle(), left_arm_start.getUpperArmRollAngle());
 
     ContObjectState goal_obj_state = req.right_arm_goal.getObjectStateRelBody();
     (*(ompl_goal->as<VectorState>(0)))[0] = goal_obj_state.x();
@@ -166,12 +171,10 @@ bool OMPLPR2Planner::createStartGoal(FullState& ompl_start, FullState& ompl_goal
     normalized_theta = angles::normalize_angle(req.base_goal.theta());
     ompl_goal->as<SE2State>(1)->setYaw(normalized_theta);
     
-    ROS_INFO("Goal : obj xyzrpy (%f %f %f %f %f %f) base xyztheta (%f %f %f %f) Upper arm roll (%f %f)",
-          goal_obj_state.x(), goal_obj_state.y(), goal_obj_state.z(), goal_obj_state.roll(), goal_obj_state.pitch(), goal_obj_state.yaw(),
-          req.base_goal.x(), req.base_goal.y(), req.base_goal.z(), normalized_theta,
-          req.right_arm_goal.getUpperArmRollAngle(), req.left_arm_goal.getUpperArmRollAngle());
-
-    getchar();
+    // ROS_INFO("Goal : obj xyzrpy (%f %f %f %f %f %f) base xyztheta (%f %f %f %f) Upper arm roll (%f %f)",
+    //       goal_obj_state.x(), goal_obj_state.y(), goal_obj_state.z(), goal_obj_state.roll(), goal_obj_state.pitch(), goal_obj_state.yaw(),
+    //       req.base_goal.x(), req.base_goal.y(), req.base_goal.z(), normalized_theta,
+    //       req.right_arm_goal.getUpperArmRollAngle(), req.left_arm_goal.getUpperArmRollAngle());
 
     return (planner->getSpaceInformation()->isValid(ompl_goal.get()) && 
             planner->getSpaceInformation()->isValid(ompl_start.get()));
@@ -179,29 +182,37 @@ bool OMPLPR2Planner::createStartGoal(FullState& ompl_start, FullState& ompl_goal
 
 // takes in an ompl state and returns a proper robot state that represents the
 // same state.
-bool OMPLPR2Planner::convertFullState(ompl::base::State* state, RobotState& robot_state,
-                                      ContBaseState& base){
+bool OMPLPR2Planner::convertFullState(const ompl::base::State* state, monolithic_pr2_planner::RobotState& robot_state, monolithic_pr2_planner::ContBaseState& base)
+{
     ContObjectState obj_state;
+
     // fix the l_arm angles
     vector<double> init_l_arm(7,0);
-    init_l_arm[0] = (0.038946287971107774);
-    init_l_arm[1] = (1.2146697069025374);
-    init_l_arm[2] = (1.3963556492780154);
-    init_l_arm[3] = -1.1972269899800325;
-    init_l_arm[4] = (-4.616317135720829);
-    init_l_arm[5] = -0.9887266887318599;
-    init_l_arm[6] = 1.1755681069775656;
-    LeftContArmState l_arm(init_l_arm);
-    RightContArmState r_arm;
+    init_l_arm[0] = 0.200000;       
+    init_l_arm[1] = 1.400000;
+    init_l_arm[2] = 1.900000;
+    init_l_arm[3] = -0.400000;
+    init_l_arm[4] = -0.100000;
+    init_l_arm[5] = -1.000000;
+    init_l_arm[6] = 0.000000;
+
+    vector<double> init_r_arm(7,0);
+
     const ompl::base::CompoundState* s = dynamic_cast<const ompl::base::CompoundState*> (state);
+
+    init_r_arm[2] = (*(s->as<VectorState>(0)))[6];
+
+    LeftContArmState l_arm(init_l_arm);
+    RightContArmState r_arm(init_r_arm);
+
     obj_state.x((*(s->as<VectorState>(0)))[0]);
     obj_state.y((*(s->as<VectorState>(0)))[1]);
     obj_state.z((*(s->as<VectorState>(0)))[2]);
     obj_state.roll((*(s->as<VectorState>(0)))[3]);
     obj_state.pitch((*(s->as<VectorState>(0)))[4]);
     obj_state.yaw((*(s->as<VectorState>(0)))[5]);
-    r_arm.setUpperArmRoll((*(s->as<VectorState>(0)))[6]);
-    l_arm.setUpperArmRoll((*(s->as<VectorState>(0)))[7]);
+    //r_arm.setUpperArmRoll((*(s->as<VectorState>(0)))[6]);
+    //l_arm.setUpperArmRoll((*(s->as<VectorState>(0)))[7]);
     base.z((*(s->as<VectorState>(0)))[8]);
     base.x(s->as<SE2State>(1)->getX());
     base.y(s->as<SE2State>(1)->getY());
@@ -210,17 +221,18 @@ bool OMPLPR2Planner::convertFullState(ompl::base::State* state, RobotState& robo
     RobotState seed_state(base, r_arm, l_arm);
     RobotPosePtr final_state;
 
-    if (!RobotState::computeRobotPose(obj_state, seed_state, final_state))
+    if (!RobotState::computeRobotPose(DiscObjectState(obj_state), seed_state, final_state))
         return false;
 
     robot_state = *final_state;
     return true;
+
 }
 
 bool OMPLPR2Planner::checkRequest(SearchRequestParams& search_request){
     planner->clear();
     planner->getProblemDefinition()->clearSolutionPaths();
-    if (m_planner_id == PRM_P)
+    if (m_planner_id == PRM_P_NUM)
         planner->as<ompl::geometric::PRM>()->clearQuery();
     search_request.left_arm_start.getAngles(&m_collision_checker->l_arm_init);
     FullState ompl_start(fullBodySpace);
@@ -230,12 +242,16 @@ bool OMPLPR2Planner::checkRequest(SearchRequestParams& search_request){
 
 bool OMPLPR2Planner::planPathCallback(SearchRequestParams& search_request, int trial_id,
     StatsWriter& m_stats_writer){
-    if (m_planner_id == PRM_P)
+    if (m_planner_id == PRM_P_NUM)
         ROS_INFO("running PRM planner!");
-    if (m_planner_id == RRT)
+    if (m_planner_id == RRT_NUM)
         ROS_INFO("running RRT planner!");
-    if (m_planner_id == RRTSTAR)
+    if (m_planner_id == RRTSTAR_NUM || m_planner_id == RRTSTARFIRSTSOL_NUM)
         ROS_INFO("running RRTStar planner!");
+    if (m_planner_id == BITSTAR_NUM || m_planner_id == BITSTARFIRSTSOL_NUM)
+        ROS_INFO("running BITStar planner!");
+    if (m_planner_id == RRTCONNECT_NUM)
+        ROS_INFO("running RRTConnect planner!");
     planner->clear();
     planner->getProblemDefinition()->clearSolutionPaths();
     planner->as<ompl::geometric::PRM>()->clearQuery();
@@ -256,7 +272,7 @@ bool OMPLPR2Planner::planPathCallback(SearchRequestParams& search_request, int t
         pdef->setGoal(temp_goal2);
     //}
     double t0 = ros::Time::now().toSec();
-    if(m_planner_id == RRTSTAR || m_planner_id == RRTSTARFIRSTSOL)
+    if(m_planner_id == RRTSTAR_NUM || m_planner_id == RRTSTARFIRSTSOL_NUM)
         planner->solve(m_allocated_planning_time);
     else
         planner->solve(m_allocated_planning_time);

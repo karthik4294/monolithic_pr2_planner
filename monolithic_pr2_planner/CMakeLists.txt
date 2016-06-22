@@ -46,8 +46,8 @@ SET(CMAKE_CXX_FLAGS "-std=c++0x")
 
 # find_package(Boost 1.46.0 COMPONENTS thread system filesystem REQUIRED)
 
-#add_definitions(-DUSE_IKFAST_SOLVER)
-add_definitions(-DUSE_KDL_SOLVER)
+add_definitions(-DUSE_IKFAST_SOLVER)
+#add_definitions(-DUSE_KDL_SOLVER)
 
 # Depend on sbpl-ros package for now
 #find_package(PkgConfig REQUIRED)

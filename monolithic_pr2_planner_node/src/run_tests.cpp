@@ -1,12 +1,13 @@
-#include<ros/ros.h>
-#include<monolithic_pr2_planner_node/GetMobileArmPlan.h>
+#include <ros/ros.h>
+#include <monolithic_pr2_planner_node/GetMobileArmPlan.h>
 #include <monolithic_pr2_planner/Constants.h>
 #include <monolithic_pr2_planner_node/fbp_stat_writer.h>
+#include <monolithic_pr2_planner_node/ompl_pr2_planner.h>
 #include <sbpl/planners/mha_planner.h>
+#include <sbpl/planners/ppma.h>
 
 void printUsage(){
-  printf("usage: runTests [imha | smha] [rr | ma | dts] path_to_test_file.yaml\n");
-  printf("usage: runTests [rrt | prm | rrtstar] path_to_test_file.yaml\n");
+  printf("usage: runTests [hstar | wastar| rrt | prm | rrtconnect | rrtstar | rrtstarfirstsol | bitstar | bitstarfirstsol] path_to_test_file.yaml\n");
 }
 
 int main(int argc, char** argv){
@@ -79,8 +80,49 @@ int main(int argc, char** argv){
       req.mha_type = mha_planner::MHAType::GBFS;
       gotMetaType = true;
     }
+    else if(strcmp(argv[i],"hstar")==0){
+      req.planner_type = static_cast<monolithic_pr2_planner_node::GetMobileArmPlanRequest_<std::allocator<void> >::_planner_type_type>(ppma_planner::PlannerMode::H_STAR);
+      gotPlannerType = true;
+      gotMetaType = true;
+    }
+    else if(strcmp(argv[i],"wastar")==0){
+      req.planner_type = static_cast<monolithic_pr2_planner_node::GetMobileArmPlanRequest_<std::allocator<void> >::_planner_type_type>(ppma_planner::PlannerMode::wA_STAR);
+      gotPlannerType = true;
+      gotMetaType = true;
+    }
     else if(strcmp(argv[i],"rrt")==0){
       req.use_ompl = true;
+      req.planner_type = static_cast<monolithic_pr2_planner_node::GetMobileArmPlanRequest_<std::allocator<void> >::_planner_type_type>(RRT_NUM);
+      gotMetaType = true;
+    }
+    else if(strcmp(argv[i],"rrtconnect")==0){
+      req.use_ompl = true;
+      req.planner_type = static_cast<monolithic_pr2_planner_node::GetMobileArmPlanRequest_<std::allocator<void> >::_planner_type_type>(RRTCONNECT_NUM);
+      gotMetaType = true;
+    }
+    else if(strcmp(argv[i],"prm")==0){
+      req.use_ompl = true;
+      req.planner_type = static_cast<monolithic_pr2_planner_node::GetMobileArmPlanRequest_<std::allocator<void> >::_planner_type_type>(PRM_P_NUM);
+      gotMetaType = true;
+    }
+    else if(strcmp(argv[i],"rrtstar")==0){
+      req.use_ompl = true;
+      req.planner_type = static_cast<monolithic_pr2_planner_node::GetMobileArmPlanRequest_<std::allocator<void> >::_planner_type_type>(RRTSTAR_NUM);
+      gotMetaType = true;
+    }
+    else if(strcmp(argv[i],"rrtstarfirstsol")==0){
+      req.use_ompl = true;
+      req.planner_type = static_cast<monolithic_pr2_planner_node::GetMobileArmPlanRequest_<std::allocator<void> >::_planner_type_type>(RRTSTARFIRSTSOL_NUM); 
+      gotMetaType = true;
+    }
+    else if(strcmp(argv[i],"bitstar")==0){
+      req.use_ompl = true;
+      req.planner_type = static_cast<monolithic_pr2_planner_node::GetMobileArmPlanRequest_<std::allocator<void> >::_planner_type_type>(BITSTAR_NUM);
+      gotMetaType = true;
+    }
+    else if(strcmp(argv[i],"bitstarfirstsol")==0){
+      req.use_ompl = true;
+      req.planner_type = static_cast<monolithic_pr2_planner_node::GetMobileArmPlanRequest_<std::allocator<void> >::_planner_type_type>(BITSTARFIRSTSOL_NUM);  
       gotMetaType = true;
     }
     else{

@@ -8,11 +8,6 @@
 #include <vector>
 #include <sstream>
 
-#define RRT 1
-#define PRM_P 2
-#define RRTSTAR 3
-#define RRTSTARFIRSTSOL 4
-
 struct RRTData {
     bool planned;
     double plan_time;

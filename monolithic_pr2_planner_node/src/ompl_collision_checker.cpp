@@ -55,27 +55,14 @@ bool omplFullBodyCollisionChecker::isValid(const ompl::base::State *state) const
 
     RobotPosePtr new_robot_state;
     if (!RobotState::computeRobotPose(DiscObjectState(obj_state), seed_state, new_robot_state)){
-      printf("Collision checking ik failed\n");
-      // ROS_INFO("[Collison] Object state: %f %f %f %f %f %f", wpose[0], wpose[1],wpose[2],wpose[3],wpose[4],wpose[5]);
-      // ROS_INFO("[Collison] Upper arm roll state: %f %f", wpose[6], wpose[7]);
-      // ROS_INFO("[Collison] Torso state: %f", wpose[10]);
-      // ROS_INFO("[Collison] Base state: %f %f %f", wpose[8], wpose[9], wpose[11]);  
+      //printf("Collision checking ik failed\n");  
       return false;
     }
-    // printf("Collision checking ik succeded\n");
-    // ROS_INFO("[Collison] Object state: %f %f %f %f %f %f", wpose[0], wpose[1],wpose[2],wpose[3],wpose[4],wpose[5]);
-    // ROS_INFO("[Collison] Upper arm roll state: %f %f", wpose[6], wpose[7]);
-    // ROS_INFO("[Collison] Torso state: %f", wpose[10]);
-    // ROS_INFO("[Collison] Base state: %f %f %f", wpose[8], wpose[9], wpose[11]);
-
-    // getchar();
 
     RightContArmState new_r_arm = new_robot_state->right_arm();
     if ( m_cspace->isValid(base, new_r_arm, l_arm)){
-        //printf("State valid\n");
         return true;
     } else {
-        printf("State in Collision\n");
         return false;
     }
 }

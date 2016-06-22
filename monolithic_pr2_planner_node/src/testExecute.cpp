@@ -111,8 +111,6 @@ int main(int argc, char** argv){
     right_arm_start[5] = -1.86517790099345;
     right_arm_start[6] = 8.571527760711906;
 
-
-
     body_start[0] = 5;
     body_start[1] = 1;
     body_start[2] = .1;
@@ -122,7 +120,6 @@ int main(int argc, char** argv){
 
     boost::shared_ptr<arm_navigation_msgs::CollisionMap const> cmap = ros::topic::waitForMessage<arm_navigation_msgs::CollisionMap>("/collision_map_out");
     m_env->getCollisionSpace()->updateMap(*cmap);
-
 
     std::unique_ptr<ARAPlanner> m_planner;
     bool forward_search = true;
