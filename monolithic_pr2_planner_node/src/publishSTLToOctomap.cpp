@@ -273,10 +273,16 @@ vector<Eigen::Vector3d> getVoxelsFromFile(std::string filename){
     //     0.15,true);
     // addCuboid(pclCloud, 5.348199056716729, 2.1079581496994748, 0.8, 0.1, 0.2, 0.3,true);
     
-    // Doorway
-    addCuboid(pclCloud, 5, 0, 0, 0.05, 2, 1.8, true);
+    // Doorway(Original used for MHA* paper)
+    //addCuboid(pclCloud, 5, 0, 0, 0.05, 2, 1.8, true);
+    //addCuboid(pclCloud, 5, 2.85, 0, 0.05, 2.2, 1.8, true);
+    //addCuboid(pclCloud, 5, 2.85, 0, 1.00, 0.05, 1.8, true);
+
+    //(Karthik) Making doorway bigger for PPMA experiments
+    addCuboid(pclCloud, 5, 0, 0, 0.05, 1.5, 1.8, true);
     addCuboid(pclCloud, 5, 2.85, 0, 0.05, 2.2, 1.8, true);
     addCuboid(pclCloud, 5, 2.85, 0, 1.00, 0.05, 1.8, true);
+
     // head of doorway; don't add this.
     // addCuboid(pclCloud, 5, 2, 1.6, 0.05, 1, 1.8, true);
 

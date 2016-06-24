@@ -1,0 +1,52 @@
+hstar_stats = 
+
+       name: 'paths_hstar_4/hstar_'
+       base: [0.7940 5.6221 3.3619]
+      spine: [0.0200 0.2000 0.0600]
+        obj: [1.1619 6.1905 4.7047]
+    arm_abs: [0 38.5149 19.1421]
+    arm_sqr: [0 9.1949 4.7860]
+       time: [0.6236 7.9348 30.0935]
+       cost: [0 0 0]
+    expands: [0 0 0]
+
+
+wastar_stats = 
+
+       name: 'paths_wastar_4/wastar_'
+       base: [-1 -1 -1]
+      spine: [-1 -1 -1]
+        obj: [-1 -1 -1]
+    arm_abs: [-1 -1 -1]
+    arm_sqr: [-1 -1 -1]
+       time: [-1 -1 -1]
+       cost: [-1 -1 -1]
+    expands: [-1 -1 -1]
+
+
+rrt_stats = 
+
+       name: 'paths_rrt_4/rrt_'
+       base: [0.8540 5.0456 5.0845]
+      spine: [0.0200 0.2400 0.1200]
+        obj: [2.8063 7.2966 7.6987]
+    arm_abs: [16.9324 60.5579 40.6313]
+    arm_sqr: [3.9964 18.9785 11.4492]
+       time: [0.0238 1.3254 5.7937]
+       cost: [0 0 0]
+    expands: [0 0 0]
+
+
+rrtconnect_stats = 
+
+       name: 'paths_rrtconnect_4/rrtconnect_'
+       base: [0.8540 5.0893 4.9186]
+      spine: [0.0200 0.1600 0.0800]
+        obj: [2.8063 6.7319 6.7853]
+    arm_abs: [16.9324 60.2107 53.1988]
+    arm_sqr: [3.9964 8.4119 10.7277]
+       time: [0.0558 0.9847 1.0252]
+       cost: [0 0 0]
+    expands: [0 0 0]
+
+

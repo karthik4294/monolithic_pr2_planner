@@ -8,7 +8,7 @@ for i in {0..9}; do
   cp experiments/tableObstacles$i.yaml experiments/tableObstacles.yaml
 
   # for method in unconstrained_mha focal_mha mha_plus original_mha; do
-  for method in hstar wastar rrt rrtconnect; do
+  for method in hstar wastar rrt rrtconnect prm; do
 
     #create necessary folders
     mkdir -p stats
