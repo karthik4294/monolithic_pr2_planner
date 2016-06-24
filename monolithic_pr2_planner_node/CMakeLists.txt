@@ -72,6 +72,7 @@ add_executable(node src/node.cpp src/EnvInterfaces.cpp #(Not required for simula
                              src/CollisionSpaceInterface.cpp
                              src/ompl_pr2_planner.cpp
                              src/ompl_collision_checker.cpp
+                             src/ompl_motion_validator.cpp
                         )
 
 # TODO I don't know why I have to list the packages explicitly.

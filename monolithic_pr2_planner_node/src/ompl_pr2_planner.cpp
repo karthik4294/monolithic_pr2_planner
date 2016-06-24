@@ -79,27 +79,27 @@ OMPLPR2Planner::OMPLPR2Planner(const CSpaceMgrPtr& cspace, int planner_id):
     m_si = si;
 
     vector<double> init_l_arm(7,0);
-    // init_l_arm[0] = (0.038946287971107774);
-    // init_l_arm[1] = (1.2146697069025374);
-    // init_l_arm[2] = (1.3963556492780154);
-    // init_l_arm[3] = -1.1972269899800325;
-    // init_l_arm[4] = (-4.616317135720829);
-    // init_l_arm[5] = -0.9887266887318599;
-    // init_l_arm[6] = 1.1755681069775656;
-    init_l_arm[0] = 0.200000;       
-    init_l_arm[1] = 1.400000;
-    init_l_arm[2] = 1.900000;
-    init_l_arm[3] = -0.400000;
-    init_l_arm[4] = -0.100000;
-    init_l_arm[5] = -1.000000;
-    init_l_arm[6] = 0.000000;
+    init_l_arm[0] = (0.038946287971107774);
+    init_l_arm[1] = (1.2146697069025374);
+    init_l_arm[2] = (1.3963556492780154);
+    init_l_arm[3] = -1.1972269899800325;
+    init_l_arm[4] = (-4.616317135720829);
+    init_l_arm[5] = -0.9887266887318599;
+    init_l_arm[6] = 1.1755681069775656;
 
     m_collision_checker = new omplFullBodyCollisionChecker(si);
     m_collision_checker->initialize(cspace, init_l_arm);
 
+    m_motion_validator = new omplFullBodyMotionValidator(si);
+    m_motion_validator->initialize(cspace, init_l_arm);
+
     ompl::base::StateValidityChecker* temp2 = m_collision_checker;
     si->setStateValidityChecker(ompl::base::StateValidityCheckerPtr(temp2));
     si->setStateValidityCheckingResolution(0.002/si->getMaximumExtent());
+    
+    ompl::base::MotionValidator* temp3 = m_motion_validator;
+    si->setMotionValidator(ompl::base::MotionValidatorPtr(temp3));
+
     si->setup();
 
     //Define a ProblemDefinition (a start/goal pair)
@@ -286,8 +286,10 @@ bool OMPLPR2Planner::planPathCallback(SearchRequestParams& search_request, int t
         bool b1 = pathSimplifier->reduceVertices(geo_path);
         bool b2 = pathSimplifier->collapseCloseVertices(geo_path);
         bool b3 = pathSimplifier->shortcutPath(geo_path);
+        
         geo_path.interpolate();
         //ROS_ERROR("shortcut:%d\n",b3);
+        
         double t3 = ros::Time::now().toSec();
         double reduction_time = t3-t2;
 

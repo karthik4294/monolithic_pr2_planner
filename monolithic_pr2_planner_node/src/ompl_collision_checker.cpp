@@ -37,13 +37,6 @@ bool omplFullBodyCollisionChecker::isValid(const ompl::base::State *state) const
     vector<double> arm1(7,0); //left arm angles
 
     arm1 = l_arm_init;
-    //arm1[0] = 0.137274;
-    //arm1[1] = 0.314918;
-    //arm1[2] = 0.185035;
-    //arm1[3] = -1.662954;
-    //arm1[4] = 2.923877;
-    //arm1[5] = -1.305254;
-    //arm1[6] = -0.370584;
 
     arm0[2] = (*(s->as<ompl::base::RealVectorStateSpace::StateType>(0)))[6];
     //arm1[2] = (*(s->as<ompl::base::RealVectorStateSpace::StateType>(0)))[5];
@@ -55,7 +48,7 @@ bool omplFullBodyCollisionChecker::isValid(const ompl::base::State *state) const
 
     RobotPosePtr new_robot_state;
     if (!RobotState::computeRobotPose(DiscObjectState(obj_state), seed_state, new_robot_state)){
-      //printf("Collision checking ik failed\n");  
+      printf("Collision checking ik failed\n");  
       return false;
     }
 
@@ -63,6 +56,7 @@ bool omplFullBodyCollisionChecker::isValid(const ompl::base::State *state) const
     if ( m_cspace->isValid(base, new_r_arm, l_arm)){
         return true;
     } else {
+        printf("Invalid state\n");
         return false;
     }
 }

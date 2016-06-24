@@ -251,7 +251,6 @@ bool RobotState::computeRobotPose(const DiscObjectState& disc_obj_state,
             bool ik_success = arm_model->computeFastIK(l_wrist_frame, l_seed, l_angles);
             if (!ik_success){
                 ROS_DEBUG_NAMED(MPRIM_LOG, "IK failed for left arm");
-                //ROS_ERROR("IK failed for left arm");
                 return false;
             }
         }
@@ -267,7 +266,6 @@ bool RobotState::computeRobotPose(const DiscObjectState& disc_obj_state,
         if (use_left_arm){
             double l_free_angle = l_seed[Joints::UPPER_ARM_ROLL];
             if (!m_ikfast_solver.ikLeftArm(l_wrist_frame, l_free_angle, &l_angles)){
-                //ROS_ERROR("Use left arm failure. IKfast");
                 return false;
             }
         }

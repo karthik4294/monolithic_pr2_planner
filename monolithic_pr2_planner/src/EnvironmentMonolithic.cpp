@@ -361,7 +361,7 @@ void EnvironmentMonolithic::GetSuccs(int q_id, int sourceStateID, vector<int>* s
         //************************DEBUG*********************//
 
         //Karthik
-        //expansion_pose.visualize(250/NUM_SMHA_HEUR*q_id);
+        expansion_pose.visualize(250/NUM_SMHA_HEUR*q_id);
         
         // source_state->robot_pose().visualize(250/NUM_SMHA_HEUR*q_id);
         m_cspace_mgr->visualizeAttachedObject(expansion_pose, 250/NUM_SMHA_HEUR*q_id);
@@ -373,6 +373,7 @@ void EnvironmentMonolithic::GetSuccs(int q_id, int sourceStateID, vector<int>* s
         // mprim->printEndCoord();
         GraphStatePtr successor;
         TransitionData t_data;
+
         if (!mprim->apply(*source_state, successor, t_data)) {
             ROS_DEBUG_NAMED(MPRIM_LOG, "couldn't apply mprim");
             continue;
@@ -860,13 +861,13 @@ bool EnvironmentMonolithic::convertFullState(const ompl::base::State* state, Rob
 
     // fix the l_arm angles
     vector<double> init_l_arm(7,0);
-    init_l_arm[0] = 0.200000;       
-    init_l_arm[1] = 1.400000;
-    init_l_arm[2] = 1.900000;
-    init_l_arm[3] = -0.400000;
-    init_l_arm[4] = -0.100000;
-    init_l_arm[5] = -1.000000;
-    init_l_arm[6] = 0.000000;
+    init_l_arm[0] = (0.038946287971107774);
+    init_l_arm[1] = (1.2146697069025374);
+    init_l_arm[2] = (1.3963556492780154);
+    init_l_arm[3] = -1.1972269899800325;
+    init_l_arm[4] = (-4.616317135720829);
+    init_l_arm[5] = -0.9887266887318599;
+    init_l_arm[6] = 1.1755681069775656;
 
     vector<double> init_r_arm(7,0);
 
@@ -898,6 +899,80 @@ bool EnvironmentMonolithic::convertFullState(const ompl::base::State* state, Rob
 
     robot_state = *final_state;
     return true;
+
+}
+
+bool EnvironmentMonolithic::wInterpolate(ompl::base::State* nstate, ompl::base::State* dstate, double &interp_size){
+
+  RobotState n_robot_state, d_robot_state;
+  ContBaseState n_base_state, d_base_state;
+
+  if (!convertFullState(nstate, n_robot_state, n_base_state)) {
+    return false;
+  }
+
+  if (!convertFullState(dstate, d_robot_state, d_base_state)) {
+    return false;
+  }
+
+  std::vector<RobotState> interp_steps;
+
+  bool w_interpolate = RobotState::workspaceInterpolate(n_robot_state, d_robot_state, &interp_steps);
+  interp_size = interp_steps.size();
+
+  if(w_interpolate)
+  {
+    for (size_t i = 0; i < interp_steps.size(); i++)
+    {
+      RightContArmState rarm = interp_steps[i].right_arm(); 
+      LeftContArmState larm = interp_steps[i].left_arm();
+      ContBaseState base = interp_steps[i].getContBaseState();
+
+      if(!m_cspace_mgr->isValid(base, rarm, larm) )
+        return false;
+    }
+
+    return true;
+  }
+  else
+    return w_interpolate;
+  
+
+}
+
+bool EnvironmentMonolithic::jInterpolate(ompl::base::State* nstate, ompl::base::State* dstate, double &interp_size){
+
+  RobotState n_robot_state, d_robot_state;
+  ContBaseState n_base_state, d_base_state;
+
+  if (!convertFullState(nstate, n_robot_state, n_base_state)) {
+    return false;
+  }
+
+  if (!convertFullState(dstate, d_robot_state, d_base_state)) {
+    return false;
+  }
+
+  std::vector<RobotState> interp_steps(interp_size);
+
+  bool j_interpolate = RobotState::jointSpaceInterpolate(n_robot_state, d_robot_state, &interp_steps);
+
+  if(j_interpolate)
+  {
+    for (size_t i = 0; i < interp_steps.size(); i++)
+    {
+      RightContArmState rarm = interp_steps[i].right_arm(); 
+      LeftContArmState larm = interp_steps[i].left_arm();
+      ContBaseState base = interp_steps[i].getContBaseState();
+
+      if(!m_cspace_mgr->isValid(base, rarm, larm) )
+        return false;
+    }
+
+    return true;
+  }
+  else
+    return j_interpolate;
 
 }
 

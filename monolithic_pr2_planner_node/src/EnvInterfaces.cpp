@@ -532,6 +532,7 @@ bool EnvInterfaces::runMHAPlanner(int planner_type,
       m_stats_writer.writeSBPL(stats, states, counter, planner_prefix);
       res.stats_field_names = stat_names;
       res.stats = stats;
+      ROS_INFO("Reconstruction Done!!!");
     } else {
       packageMHAStats(stat_names, stats, soln_cost, states.size(),
                       total_planning_time);
@@ -658,6 +659,9 @@ bool EnvInterfaces::runPPMAPlanner(int planner_type,
     return true;
   } else {
 
+    //m_ppma_planner->setGoalBias(0.5);
+    //m_ppma_planner->setRange();
+
     m_ppma_planner->set_start(start_id);
     ROS_INFO("setting %s goal id to %d", planner_prefix.c_str(), goal_id);
     m_ppma_planner->set_goal(goal_id);
@@ -674,6 +678,8 @@ bool EnvInterfaces::runPPMAPlanner(int planner_type,
     if (isPlanFound) {
         
         ROS_INFO("Plan found in %s Planner. Moving on to reconstruction.", planner_prefix.c_str());
+
+        getchar();
 
         ompl::base::PathPtr path = m_ppma_planner->getProblemDefinition()->getSolutionPath();
         data.planned = true;

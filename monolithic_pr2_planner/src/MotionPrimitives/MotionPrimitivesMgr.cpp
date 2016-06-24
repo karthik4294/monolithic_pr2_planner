@@ -27,8 +27,8 @@ bool MotionPrimitivesMgr::loadMPrims(const MotionPrimitiveParams& params){
 
     MPrimList arm_amps;
     arm_amps.push_back(armAMP);
-    //arm_amps.push_back(tuckAMP);
-    //arm_amps.push_back(untuckAMP);
+    arm_amps.push_back(tuckAMP);
+    arm_amps.push_back(untuckAMP);
 
     MPrimList base_amps;
     int NEG_TURN = -1;

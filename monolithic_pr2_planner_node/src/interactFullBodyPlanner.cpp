@@ -12,6 +12,7 @@ enum MenuItems{PLAN_IMHA_ROUND_ROBIN=1,
                PLAN_SMHA_DTS,
                PLAN_HSTAR,
                PLAN_WASTAR,
+               PLAN_RRT,
                INTERRUPT,
                WRITE_TO_FILE};
 
@@ -49,7 +50,8 @@ void ControlPlanner::processFeedback(const visualization_msgs::InteractiveMarker
        feedback->menu_entry_id == MenuItems::PLAN_SMHA_META_A_STAR ||
        feedback->menu_entry_id == MenuItems::PLAN_SMHA_DTS ||
        feedback->menu_entry_id == MenuItems::PLAN_HSTAR ||
-       feedback->menu_entry_id == MenuItems::PLAN_WASTAR){
+       feedback->menu_entry_id == MenuItems::PLAN_WASTAR ||
+       feedback->menu_entry_id == MenuItems::PLAN_RRT){
 
       visualization_msgs::InteractiveMarker start_base_marker;
       int_marker_server->get("start_base",start_base_marker);
@@ -101,7 +103,8 @@ void ControlPlanner::processFeedback(const visualization_msgs::InteractiveMarker
         req.planner_type = static_cast<monolithic_pr2_planner_node::GetMobileArmPlanRequest_<std::allocator<void> >::_planner_type_type>(ppma_planner::PlannerMode::H_STAR);
       if(feedback->menu_entry_id == MenuItems::PLAN_WASTAR)
         req.planner_type = static_cast<monolithic_pr2_planner_node::GetMobileArmPlanRequest_<std::allocator<void> >::_planner_type_type>(ppma_planner::PlannerMode::wA_STAR);
-
+      if(feedback->menu_entry_id == MenuItems::PLAN_RRT)
+        req.planner_type = static_cast<monolithic_pr2_planner_node::GetMobileArmPlanRequest_<std::allocator<void> >::_planner_type_type>(ppma_planner::PlannerMode::RRT);
       //position of the wrist in the object's frame
       req.rarm_object.pose.position.x = 0;
       req.rarm_object.pose.position.y = 0;
@@ -122,7 +125,7 @@ void ControlPlanner::processFeedback(const visualization_msgs::InteractiveMarker
       req.roll_tolerance = .1;
       req.pitch_tolerance = .1;
       req.yaw_tolerance = .1;
-      req.allocated_planning_time = 30.0;
+      req.allocated_planning_time = 60.0;
       req.planning_mode = monolithic_pr2_planner::PlanningModes::RIGHT_ARM_MOBILE;
 
       //planner parameters
@@ -347,13 +350,21 @@ ControlPlanner::ControlPlanner(){
 
   torso_z = 0.3; //0.26
   angles1.resize(7);
-  angles1[0] = 0.2;
-  angles1[1] = 1.4;
-  angles1[2] = 1.9;
-  angles1[3] = -0.4;
-  angles1[4] = -0.1;
-  angles1[5] = -1.00;
-  angles1[6] = 0.0;
+  // angles1[0] = 0.2;
+  // angles1[1] = 1.4;
+  // angles1[2] = 1.9;
+  // angles1[3] = -0.4;
+  // angles1[4] = -0.1;
+  // angles1[5] = -1.00;
+  // angles1[6] = 0.0;
+  angles1[0] = (0.038946287971107774);
+  angles1[1] = (1.2146697069025374);
+  angles1[2] = (1.3963556492780154);
+  angles1[3] = -1.1972269899800325;
+  angles1[4] = (-4.616317135720829);
+  angles1[5] = -0.9887266887318599;
+  angles1[6] = 1.1755681069775656;
+
 
   //make kdl (used for FK and IK)
   string robot_description;
@@ -628,6 +639,7 @@ ControlPlanner::ControlPlanner(){
   menu_handler.insert("Plan SMHA DTS", boost::bind(&ControlPlanner::processFeedback, this, _1));
   menu_handler.insert("Plan HSTAR", boost::bind(&ControlPlanner::processFeedback, this, _1));
   menu_handler.insert("Plan WASTAR", boost::bind(&ControlPlanner::processFeedback, this, _1));
+  menu_handler.insert("Plan RRT", boost::bind(&ControlPlanner::processFeedback, this, _1));
   menu_handler.insert("Interrupt Planner", boost::bind(&ControlPlanner::processFeedback, this, _1));
   menu_handler.insert("Write to file", boost::bind(&ControlPlanner::processFeedback, this, _1));
   menu_handler.apply(*int_marker_server, "start_base");

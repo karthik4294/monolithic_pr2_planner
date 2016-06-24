@@ -15,6 +15,7 @@
 #include <ompl/geometric/planners/bitstar/BITstar.h>
 #include <ompl/base/goals/GoalState.h>
 #include <monolithic_pr2_planner_node/ompl_collision_checker.h>
+#include <monolithic_pr2_planner_node/ompl_motion_validator.h>
 #include <memory>
 #include <monolithic_pr2_planner/CollisionSpaceMgr.h>
 #include <monolithic_pr2_planner/StateReps/RobotState.h>
@@ -58,6 +59,7 @@ class OMPLPR2Planner{
         ompl::base::Planner* planner;
         ompl::geometric::PathSimplifier* pathSimplifier;
         omplFullBodyCollisionChecker* m_collision_checker;
+        omplFullBodyMotionValidator* m_motion_validator;
         // StatsWriter m_stats_writer;
         int m_planner_id;
         double m_allocated_planning_time;

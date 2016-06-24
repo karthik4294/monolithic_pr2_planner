@@ -84,6 +84,8 @@ namespace monolithic_pr2_planner {
             int GetContStateID(const ompl::base::State* state); 
             int GetContEdgeCost(const ompl::base::State *parent, const ompl::base::State *child);
             bool convertFullState(const ompl::base::State* state, RobotState& robot_state, ContBaseState& base);
+            bool wInterpolate(ompl::base::State* nstate, ompl::base::State* dstate, double &interp_size);
+            bool jInterpolate(ompl::base::State* nstate, ompl::base::State* dstate, double &interp_size);
             int getAdditionalCostMult();
 
             ParameterCatalog m_param_catalog;
