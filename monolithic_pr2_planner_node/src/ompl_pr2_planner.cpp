@@ -287,7 +287,7 @@ bool OMPLPR2Planner::planPathCallback(SearchRequestParams& search_request, int t
         bool b2 = pathSimplifier->collapseCloseVertices(geo_path);
         bool b3 = pathSimplifier->shortcutPath(geo_path);
         
-        geo_path.interpolate();
+        //geo_path.interpolate();
         //ROS_ERROR("shortcut:%d\n",b3);
         
         double t3 = ros::Time::now().toSec();
@@ -298,27 +298,46 @@ bool OMPLPR2Planner::planPathCallback(SearchRequestParams& search_request, int t
         vector<RobotState> robot_states;
         vector<ContBaseState> base_states;
 
-        for(unsigned int i=0; i<geo_path.getStateCount(); i++){
+        for(unsigned int i=0; i<geo_path.getStateCount()-1; i++){
             ompl::base::State* state = geo_path.getState(i);
-            RobotState robot_state;
-            ContBaseState base;
-            if (!convertFullState(state, robot_state, base)){
-                ROS_ERROR("ik failed on path reconstruction!");
-            }
-            vector<double> l_arm, r_arm;
-            robot_states.push_back(robot_state);
-            base_states.push_back(base);
+            ompl::base::State* next_state = geo_path.getState(i+1);
 
-            robot_state.right_arm().getAngles(&r_arm);
-            robot_state.left_arm().getAngles(&l_arm);
-            BodyPose bp = base.body_pose();
+            RobotState robot_state, next_robot_state;
+            ContBaseState base, next_base;
+            std::vector<RobotState> interp_steps;
+
+            if (convertFullState(state, robot_state, base) && convertFullState(next_state, next_robot_state, next_base)){
+                
+                bool w_interpolate = RobotState::workspaceInterpolate(robot_state, next_robot_state, &interp_steps); 
+
+                if (!w_interpolate) {
+                    interp_steps.clear();
+                    bool j_interpolate = RobotState::jointSpaceInterpolate(robot_state, next_robot_state, &interp_steps);
+                }
+
+            }
+            else{
+                interp_steps.clear();
+                bool j_interpolate = RobotState::jointSpaceInterpolate(robot_state, next_robot_state, &interp_steps);
+            }
+
+            vector<double> l_arm, r_arm;
+            for(size_t  j = 0; j < interp_steps.size(); j++)
+            {
+                robot_states.push_back(interp_steps[j]);
+                base_states.push_back(interp_steps[j].getContBaseState());
+
+                interp_steps[j].right_arm().getAngles(&r_arm);
+                interp_steps[j].left_arm().getAngles(&l_arm);
+                BodyPose bp = interp_steps[j].getContBaseState().body_pose();
             
+            }
             // Visualizer::pviz->visualizeRobot(r_arm, l_arm, bp, 150, "robot", 0);
             // usleep(5000);
         }
         data.robot_state = robot_states;
         data.base = base_states;
-        data.path_length = geo_path.getStateCount();
+        data.path_length = robot_states.size();//geo_path.getStateCount();
         m_stats_writer.setPlannerId(m_planner_id);
         m_stats_writer.write(trial_id, data);
     } else {

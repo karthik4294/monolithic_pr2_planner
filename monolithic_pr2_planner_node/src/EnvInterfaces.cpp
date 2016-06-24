@@ -679,8 +679,6 @@ bool EnvInterfaces::runPPMAPlanner(int planner_type,
         
         ROS_INFO("Plan found in %s Planner. Moving on to reconstruction.", planner_prefix.c_str());
 
-        getchar();
-
         ompl::base::PathPtr path = m_ppma_planner->getProblemDefinition()->getSolutionPath();
         data.planned = true;
         
@@ -690,42 +688,126 @@ bool EnvInterfaces::runPPMAPlanner(int planner_type,
         bool b1 = pathSimplifier->reduceVertices(geo_path);
         bool b2 = pathSimplifier->collapseCloseVertices(geo_path);
         bool b3 = pathSimplifier->shortcutPath(geo_path);
-        geo_path.interpolate();
+        
+        //geo_path.interpolate();
         //ROS_ERROR("shortcut:%d\n",b3);
+        
         double t3 = ros::Time::now().toSec();
         double reduction_time = t3-t2;
 
+        // data.plan_time = totalTime;
+        // data.shortcut_time = reduction_time;
+
+        // vector<RobotState> robot_states;
+        // vector<ContBaseState> base_states;
+
+        // for(unsigned int i=0; i<geo_path.getStateCount(); i++){
+        //     ompl::base::State* state = geo_path.getState(i);
+            
+        //     RobotState robot_state;
+        //     ContBaseState base;
+            
+        //     if (!convertFullState(state, robot_state, base)){
+        //         ROS_ERROR("ik failed on path reconstruction!");
+        //     }
+        //     vector<double> l_arm, r_arm;
+        //     robot_states.push_back(robot_state);
+        //     base_states.push_back(base);
+
+        //     robot_state.right_arm().getAngles(&r_arm);
+        //     robot_state.left_arm().getAngles(&l_arm);
+        //     BodyPose bp = base.body_pose();
+            
+        //     //Visualizer::pviz->visualizeRobot(r_arm, l_arm, bp, 150, "robot", 0);
+        //     //usleep(5000);
+        // }
+        // data.robot_state = robot_states;
+        // data.base = base_states;
+        // data.path_length = geo_path.getStateCount();
+        // m_stats_writer.setPlannerId(req.planner_type);
+        // m_stats_writer.write(counter, data);
+
         data.plan_time = totalTime;
         data.shortcut_time = reduction_time;
-
         vector<RobotState> robot_states;
         vector<ContBaseState> base_states;
+        for(unsigned int i = 0; i < geo_path.getStateCount()-2; i++){
 
-        for(unsigned int i=0; i<geo_path.getStateCount(); i++){
             ompl::base::State* state = geo_path.getState(i);
-            
-            RobotState robot_state;
-            ContBaseState base;
-            
-            if (!convertFullState(state, robot_state, base)){
-                ROS_ERROR("ik failed on path reconstruction!");
-            }
-            vector<double> l_arm, r_arm;
-            robot_states.push_back(robot_state);
-            base_states.push_back(base);
+            ompl::base::State* next_state = geo_path.getState(i+1);
 
-            robot_state.right_arm().getAngles(&r_arm);
-            robot_state.left_arm().getAngles(&l_arm);
-            BodyPose bp = base.body_pose();
+            RobotState robot_state, next_robot_state;
+            ContBaseState base, next_base;
+            std::vector<RobotState> interp_steps;
+
+            bool w_interpolate, j_interpolate;
+
+            bool c1 = convertFullState(state, robot_state, base);
+            bool c2 = convertFullState(next_state, next_robot_state, next_base); 
+
+            if ( c1 && c2){
+                
+                w_interpolate = RobotState::workspaceInterpolate(robot_state, next_robot_state, &interp_steps); 
+
+                if (!w_interpolate) {
+                    interp_steps.clear();
+                    j_interpolate = RobotState::jointSpaceInterpolate(robot_state, next_robot_state, &interp_steps);
+                }
+
+            }
+            else{
+                //ROS_INFO("Tip count : %d base x : %f y : %f z : %f theta : %f", tip_count, base.x(), base.y(), base.z(), base.theta());
+                //getchar();
+                RightContArmState temp_r_arm({-0.2, 1.1072800, -1.5566882, -2.124408, 0.0, -1.57, 0.0});
+                LeftContArmState temp_l_arm({0.038946, 1.214670, 1.396356, -1.197227, -4.616317, -0.988727, 1.175568});
+                if(!c1)
+                {
+                  RobotState temp_state(base, temp_r_arm, temp_l_arm);
+                  robot_state = temp_state;
+                }
+                if(!c2)
+                {
+                  RobotState next_temp_state(next_base, temp_r_arm, temp_l_arm);
+                  next_robot_state = next_temp_state;
+                }
+
+                interp_steps.clear();
+                  
+                // interp_steps.push_back(robot_state);
+                // interp_steps.push_back(next_robot_state);
+                w_interpolate = RobotState::workspaceInterpolate(robot_state, next_robot_state, &interp_steps); 
+
+                if (!w_interpolate) 
+                {
+                    interp_steps.clear();
+                    j_interpolate = RobotState::jointSpaceInterpolate(robot_state, next_robot_state, &interp_steps);
+                }
+            }
+
+            if(!w_interpolate && !j_interpolate)
+             continue;
+
+
+            vector<double> l_arm, r_arm;
+            for(size_t  j = 0; j < interp_steps.size(); j++)
+            {
+                robot_states.push_back(interp_steps[j]);
+                base_states.push_back(interp_steps[j].getContBaseState());
+
+                interp_steps[j].right_arm().getAngles(&r_arm);
+                interp_steps[j].left_arm().getAngles(&l_arm);
+                BodyPose bp = interp_steps[j].getContBaseState().body_pose();
             
-            //Visualizer::pviz->visualizeRobot(r_arm, l_arm, bp, 150, "robot", 0);
-            //usleep(5000);
+            }
+            // Visualizer::pviz->visualizeRobot(r_arm, l_arm, bp, 150, "robot", 0);
+            // usleep(5000);
         }
         data.robot_state = robot_states;
         data.base = base_states;
-        data.path_length = geo_path.getStateCount();
+        data.path_length = robot_states.size();//geo_path.getStateCount();
         m_stats_writer.setPlannerId(req.planner_type);
         m_stats_writer.write(counter, data);
+
     } else {
         data.planned = false;
         ROS_INFO("No plan found in %s!", planner_prefix.c_str());
@@ -1231,7 +1313,9 @@ bool EnvInterfaces::convertFullState(ompl::base::State* state, RobotState& robot
     RobotPosePtr final_state;
 
     if (!RobotState::computeRobotPose(obj_state, seed_state, final_state))
+    { 
         return false;
+    }
 
     robot_state = *final_state;
     return true;

@@ -8,7 +8,7 @@ for i in {0..9}; do
   cp experiments/tableObstacles$i.yaml experiments/tableObstacles.yaml
 
   # for method in unconstrained_mha focal_mha mha_plus original_mha; do
-  for method in gbfs; do
+  for method in hstar wastar rrt rrtconnect; do
 
     #create necessary folders
     mkdir -p stats
@@ -16,7 +16,7 @@ for i in {0..9}; do
 
     #start the planner
     echo "starting planner"
-    screen -dmS planner bash -c "source ~/ros/mha/setup.bash; roslaunch monolithic_pr2_planner_node run_experiments.launch"
+    screen -dmS planner bash -c "source ~/fbp/devel/setup.bash; roslaunch monolithic_pr2_planner_node run_experiments.launch"
 
     #a hack because the planner takes a while to start
     sleep 50 #50
@@ -24,11 +24,11 @@ for i in {0..9}; do
     #send the tests
     echo "sending goals from environment $i using the $method method"
 
-    if [ $method == "rrt" ]; then
-      ./bin/runTests experiments/fbp_tests$i.yaml $method
-    else
-      ./bin/runTests experiments/fbp_tests$i.yaml smha $method
-    fi
+    #if [ $method == "rrt" ]; then
+    #  ./bin/runTests experiments/fbp_tests$i.yaml $method
+    #else
+    ~/fbp/devel/lib/monolithic_pr2_planner_node/runTests $method experiments/fbp_tests$i.yaml  
+    #fi
 
     #when the trials are done, kill the planner
     echo "killing planner"
@@ -37,7 +37,7 @@ for i in {0..9}; do
     sleep 20
 
     #save the stats
-    mv mha_stats.csv stats/mha_stats_${method}_${i}.csv
+    #mv mha_stats.csv stats/mha_stats_${method}_${i}.csv
     mv /tmp/planning_stats/* stats/paths_${method}_${i}
   done
 done

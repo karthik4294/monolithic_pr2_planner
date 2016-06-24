@@ -48,7 +48,7 @@ bool omplFullBodyCollisionChecker::isValid(const ompl::base::State *state) const
 
     RobotPosePtr new_robot_state;
     if (!RobotState::computeRobotPose(DiscObjectState(obj_state), seed_state, new_robot_state)){
-      printf("Collision checking ik failed\n");  
+      //printf("Collision checking ik failed\n");  
       return false;
     }
 
@@ -56,7 +56,7 @@ bool omplFullBodyCollisionChecker::isValid(const ompl::base::State *state) const
     if ( m_cspace->isValid(base, new_r_arm, l_arm)){
         return true;
     } else {
-        printf("Invalid state\n");
+        //printf("Invalid state\n");
         return false;
     }
 }
