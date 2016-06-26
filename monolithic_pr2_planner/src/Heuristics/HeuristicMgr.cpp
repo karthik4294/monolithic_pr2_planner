@@ -196,7 +196,9 @@ void HeuristicMgr::initializeHeuristics() {
     // Already in mm.
     {
         int cost_multiplier = 1;
-        double radius_around_goal = 0.75; //0.75;
+        //TODO(karthik) : Since we have a fully specified goal a low radius is set around base x and y
+        //Must be read from some config depending on whether fully spec or not 
+        double radius_around_goal = 0.05; //0.75;
         add2DHeur("admissible_base", cost_multiplier, radius_around_goal);
     }
 
@@ -538,7 +540,11 @@ void HeuristicMgr::initializeMHAHeuristics(const int cost_multiplier){
     double radius_around_goal = m_heuristics[m_heuristic_map["admissible_base"]]->getRadiusAroundGoal();
 
     // Get points on the circle around the base heuristic.
-    DiscObjectState state = m_goal.getObjectState(); 
+    RobotState robot_state = m_goal.getRobotState();
+
+    DiscObjectState state;
+    state.x(robot_state.base_state().x() ); 
+    state.y(robot_state.base_state().y() ); 
     std::vector<int> circle_x;
     std::vector<int> circle_y;
     double res = m_occupancy_grid->getResolution();
