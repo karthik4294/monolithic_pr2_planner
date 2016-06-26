@@ -12,9 +12,9 @@ using namespace monolithic_pr2_planner;
 //    m_tolerances[Tolerances::YAW] = search_request->m_params->yaw_tolerance;
 //}
 
-GoalState::GoalState(DiscObjectState obj_goal, double xyz_tol, 
+GoalState::GoalState(RobotState goal_state, double xyz_tol, 
                      double roll_tol, double pitch_tol, double yaw_tol):
-    m_goal_state(obj_goal), m_tolerances(4,0){
+    m_goal_state(goal_state), m_tolerances(4,0){
 
     m_tolerances[Tolerances::XYZ] = xyz_tol;
     m_tolerances[Tolerances::ROLL] = roll_tol;
@@ -31,12 +31,16 @@ bool GoalState::withinXYZTol(const GraphStatePtr& graph_state){
                           m_tolerances[Tolerances::PITCH],
                           m_tolerances[Tolerances::YAW]);
     DiscObjectState d_tol = c_tol.getDiscObjectState();
+    
+    RobotState robot_pose = graph_state->robot_pose();
+    DiscBaseState base = robot_pose.base_state();
+
     DiscObjectState obj = graph_state->getObjectStateRelMap();
 
 
-    bool within_xyz_tol = (abs(m_goal_state.x()-obj.x()) < d_tol.x() &&
-                           abs(m_goal_state.y()-obj.y()) < d_tol.y() &&
-                           abs(m_goal_state.z()-obj.z()) < d_tol.z());
+    bool within_xyz_tol = (abs(m_goal_state.getObjectStateRelBody().x()-obj.x()) < d_tol.x() &&
+                           abs(m_goal_state.getObjectStateRelBody().y()-obj.y()) < d_tol.y() &&
+                           abs(m_goal_state.getObjectStateRelBody().z()-obj.z()) < d_tol.z());
     return within_xyz_tol;
 }
 
@@ -49,19 +53,23 @@ bool GoalState::isSatisfiedBy(const GraphStatePtr& graph_state){
                           m_tolerances[Tolerances::PITCH],
                           m_tolerances[Tolerances::YAW]);
     DiscObjectState d_tol = c_tol.getDiscObjectState();
+    
+    RobotState robot_pose = graph_state->robot_pose();
+    DiscBaseState base = robot_pose.base_state();
+
     DiscObjectState obj = graph_state->getObjectStateRelMap();
 
 
-    bool within_xyz_tol = (abs(m_goal_state.x()-obj.x()) < d_tol.x() &&
-                           abs(m_goal_state.y()-obj.y()) < d_tol.y() &&
-                           abs(m_goal_state.z()-obj.z()) < d_tol.z());
+    bool within_xyz_tol = (abs(m_goal_state.getObjectStateRelBody().x()-obj.x()) < d_tol.x() &&
+                           abs(m_goal_state.getObjectStateRelBody().y()-obj.y()) < d_tol.y() &&
+                           abs(m_goal_state.getObjectStateRelBody().z()-obj.z()) < d_tol.z());
     // bool within_rpy_tol = (abs(m_goal_state.roll()-obj.roll()) < d_tol.roll() &&
     //                        abs(m_goal_state.pitch()-obj.pitch()) < d_tol.pitch() &&
     //                        abs(m_goal_state.yaw()-obj.yaw()) < d_tol.yaw());
 
 
     bool within_quat_tol;
-     tf::Quaternion quat_state(m_goal_state.yaw(),m_goal_state.pitch(),m_goal_state.roll());
+     tf::Quaternion quat_state(m_goal_state.getObjectStateRelBody().yaw(),m_goal_state.getObjectStateRelBody().pitch(),m_goal_state.getObjectStateRelBody().roll());
      tf::Quaternion quat_goal(obj.yaw(),obj.pitch(),obj.roll());
 
     double diff = quat_state.angleShortestPath(quat_goal);
@@ -69,7 +77,15 @@ bool GoalState::isSatisfiedBy(const GraphStatePtr& graph_state){
     // within_quat_tol = diff < d_tol.roll();      //should be another parameter d_tol.quat()
     within_quat_tol = diff < 0.1*d_tol.roll();      //should be another parameter d_tol.quat()
 
-    if (within_xyz_tol && within_quat_tol){
+
+    bool within_basexyz_tol = (abs(m_goal_state.base_state().x()-base.x()) < 5*d_tol.x() &&
+                               abs(m_goal_state.base_state().y()-base.y()) < 5*d_tol.y() &&
+                               abs(m_goal_state.base_state().z()-base.z()) < 5*d_tol.z());
+
+    bool within_baseyaw_tol = (abs(m_goal_state.base_state().theta()-base.theta()) < 5*d_tol.yaw());
+
+
+    if (within_xyz_tol && within_quat_tol &&  within_basexyz_tol && within_baseyaw_tol){
         return true;
     } else {
         return false;
@@ -95,7 +111,7 @@ void GoalState::addPotentialSolnState(const GraphStatePtr& graph_state) {
 }
 
 void GoalState::visualize(){
-    ContObjectState cont_goal = ContObjectState(m_goal_state);
+    ContObjectState cont_goal = ContObjectState(m_goal_state.getObjectStateRelBody());
     std::vector<double> pose;
     pose.push_back(cont_goal.x());
     pose.push_back(cont_goal.y());

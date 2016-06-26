@@ -731,7 +731,7 @@ bool EnvInterfaces::runPPMAPlanner(int planner_type,
         data.shortcut_time = reduction_time;
         vector<RobotState> robot_states;
         vector<ContBaseState> base_states;
-        for(unsigned int i = 0; i < geo_path.getStateCount()-2; i++){
+        for(unsigned int i = 0; i < geo_path.getStateCount()-1; i++){
 
             ompl::base::State* state = geo_path.getState(i);
             ompl::base::State* next_state = geo_path.getState(i+1);
@@ -782,9 +782,8 @@ bool EnvInterfaces::runPPMAPlanner(int planner_type,
                 }
             }
 
-            if(!w_interpolate && !j_interpolate)
-             continue;
-
+            // if(!w_interpolate && !j_interpolate)
+            //  continue;
 
             vector<double> l_arm, r_arm;
             for(size_t  j = 0; j < interp_steps.size(); j++)

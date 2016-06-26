@@ -511,7 +511,9 @@ void HeuristicMgr::initNewMHABaseHeur(std::string name, int g_x, int g_y, const 
     state.x(g_x);
     state.y(g_y);
     GoalState new_goal_state(m_goal);
-    new_goal_state.setGoal(state);
+    new_goal_state.getObjectState().x(g_x);
+    new_goal_state.getObjectState().y(g_y);
+    new_goal_state.setGoal(new_goal_state.getRobotState());
 
     // Create the new heuristic
     addBaseWithRotationHeur(name, cost_multiplier);
@@ -660,7 +662,7 @@ void HeuristicMgr::initializeMHAHeuristics(const int cost_multiplier){
     RobotState rs(dummy_base, folded_rarm, dummy_larm);
     DiscObjectState localFoldedArmObject = rs.getObjectStateRelBody();
     GoalState localFoldedArmGoal;
-    localFoldedArmGoal.setGoal(localFoldedArmObject);
+    localFoldedArmGoal.setGoal(rs);
     addEndEffLocalHeur("arm_angles_folded", 500, localFoldedArmGoal);
 
     clock_t new_heur_t1 = clock();

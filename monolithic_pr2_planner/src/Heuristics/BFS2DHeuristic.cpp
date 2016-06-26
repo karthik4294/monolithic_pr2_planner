@@ -61,6 +61,10 @@ void BFS2DHeuristic::setGoal(GoalState& goal_state){
 
 
     DiscObjectState state = goal_state.getObjectState(); 
+    
+    ROS_INFO("State x : %d y : %d", state.x(), state.y());
+    ROS_INFO("State x : %f y : %f", state.x(), state.y());
+
     visualizeRadiusAroundGoal(state.x(), state.y());
     visualizeCenter(state.x(), state.y());
 

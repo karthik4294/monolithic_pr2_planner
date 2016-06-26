@@ -298,7 +298,7 @@ bool OMPLPR2Planner::planPathCallback(SearchRequestParams& search_request, int t
         vector<RobotState> robot_states;
         vector<ContBaseState> base_states;
 
-        for(unsigned int i=0; i<geo_path.getStateCount()-2; i++){
+        for(unsigned int i=0; i<geo_path.getStateCount()-1; i++){
             ompl::base::State* state = geo_path.getState(i);
             ompl::base::State* next_state = geo_path.getState(i+1);
 

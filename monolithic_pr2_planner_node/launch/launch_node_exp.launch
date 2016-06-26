@@ -23,7 +23,7 @@
     <remap from="cloud_in" to="pcl_environment" />
 
   </node>
-  <node pkg="monolithic_pr2_planner_node" type="stlToOctomap" name="stlToOctomap" args="package://monolithic_pr2_planner_node/maps/max_kitchen.dae">
+  <node pkg="monolithic_pr2_planner_node" type="stlToOctomap" name="stlToOctomap" args="package://monolithic_pr2_planner_node/maps/max_kitchen.dae">  
     <param name="addTableObstacles" value="true"/>
     <param name="randomizeTableObstacles" value="false"/>
     <param name="pathToTableObstacleParamFile" value="$(find monolithic_pr2_planner_node)/experiments/tableObstacles.yaml"/>
@@ -34,7 +34,7 @@
 
   <param name="robot_description" command="$(find xacro)/xacro.py '$(find pr2_description)/robots/pr2.urdf.xacro'" />
   
-  <node pkg="monolithic_pr2_planner_node" type="node" name="monolithic_pr2_planner_node" output="screen">
+  <node pkg="monolithic_pr2_planner_node" type="node" name="monolithic_pr2_planner_node" output="screen" launch-prefix="gdb --args">
       <param name="use_new_heuristics" value="true" />
       <rosparam command="load" file="$(find monolithic_pr2_planner_node)/config/logging_levels.yaml" />
       <rosparam command="load" file="$(find monolithic_pr2_planner)/config/pr2_both_arms.yaml" />

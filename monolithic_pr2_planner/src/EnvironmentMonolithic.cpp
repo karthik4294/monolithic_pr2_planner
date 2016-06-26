@@ -607,14 +607,28 @@ bool EnvironmentMonolithic::setStartGoal(SearchRequestPtr search_request,
     obj_state.printToInfo(SEARCH_LOG);
     // start_pose.visualize();
 
+    RobotState goal_pose(search_request->m_params->base_goal, 
+                     search_request->m_params->right_arm_goal,
+                     search_request->m_params->left_arm_goal);
+
+    GraphStatePtr goal_graph_state = make_shared<GraphState>(goal_pose);
+    m_hash_mgr->save(goal_graph_state);
+    goal_id = goal_graph_state->id();
+    assert(m_hash_mgr->getGraphState(goal_graph_state->id()) == goal_graph_state);
+
+    goal_pose.visualize();
+
+    getchar();
+
 
     m_goal = search_request->createGoalState();
 
     if (m_hash_mgr->size() < 2){
         goal_id = saveFakeGoalState(start_graph_state);
-    } else {
-        goal_id = 1;
     }
+    //else {
+    //    goal_id = 1;
+    //}
 
     ROS_INFO_NAMED(SEARCH_LOG, "Goal state created:");
     ContObjectState c_goal = m_goal->getObjectState();
@@ -746,7 +760,7 @@ void EnvironmentMonolithic::GetNearestLatticeState(const ompl::base::State *cont
 }
 
 void EnvironmentMonolithic::GetContState(int state_id, ompl::base::State *state){
-  
+
   GraphStatePtr graph_state = m_hash_mgr->getGraphState(state_id);
   RobotState robot_state = graph_state->robot_pose();
 

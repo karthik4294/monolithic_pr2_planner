@@ -13,6 +13,11 @@ bool SearchRequest::isValid(CSpaceMgrPtr& cspace){
     RobotState robot_start_pose(m_params->base_start,
                                m_params->right_arm_start,
                                m_params->left_arm_start);
+
+    RobotState robot_goal_pose(m_params->base_goal,
+                       m_params->right_arm_goal,
+                       m_params->left_arm_goal);
+
     if (m_params->initial_epsilon < 1 || 
         m_params->final_epsilon < 1 || 
         m_params->decrement_epsilon < 0){
@@ -34,11 +39,21 @@ bool SearchRequest::isValid(CSpaceMgrPtr& cspace){
         ROS_ERROR_NAMED(INIT_LOG, "Starting pose is invalid.");
         return false;
     }
+
+    if (!cspace->isValid(robot_goal_pose)){
+        ROS_ERROR_NAMED(INIT_LOG, "Goal pose is invalid.");
+        return false;
+    }
     return true;
 }
 
 GoalStatePtr SearchRequest::createGoalState(){
-    return boost::make_shared<GoalState>(m_params->obj_goal,
+
+    RobotState robot_goal_pose(m_params->base_goal,
+                           m_params->right_arm_goal,
+                           m_params->left_arm_goal);
+
+    return boost::make_shared<GoalState>(robot_goal_pose,
                                          m_params->xyz_tolerance,
                                          m_params->roll_tolerance,
                                          m_params->pitch_tolerance,
