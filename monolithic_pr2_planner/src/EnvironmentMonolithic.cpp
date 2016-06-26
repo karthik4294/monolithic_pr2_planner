@@ -86,6 +86,13 @@ int EnvironmentMonolithic::GetGoalHeuristic(int heuristic_id, int stateID) {
         ROS_DEBUG_NAMED(HEUR_LOG, "%s : %d", heur.first.c_str(), heur.second);
     }
 
+    //Check for base heuristic when end_eff heur is 0
+    if((*values).at("admissible_endeff") == 0 && (*values).at("admissible_base") != 0)
+    {
+      ROS_WARN("End effector heuristic is zero but base heuristic is not!!! Check your goal radius. Setting the base heuristic to zero for now");
+      (*values).at("admissible_base") = 0;
+    }
+
     if(!m_use_new_heuristics){
       switch (heuristic_id) {
         case 0:  // Anchor
@@ -103,6 +110,7 @@ int EnvironmentMonolithic::GetGoalHeuristic(int heuristic_id, int stateID) {
       double w_armFold = 0.2;
       int ad_base = (*values).at("admissible_base");
       int ad_endeff = (*values).at("admissible_endeff");
+
       int anchor_h = std::max(ad_base, ad_endeff);
       int endeff_rot_goal = (*values).at("endeff_rot_goal");
 
@@ -361,7 +369,7 @@ void EnvironmentMonolithic::GetSuccs(int q_id, int sourceStateID, vector<int>* s
         //************************DEBUG*********************//
 
         //Karthik
-        //expansion_pose.visualize(250/NUM_SMHA_HEUR*q_id);
+        expansion_pose.visualize(250/NUM_SMHA_HEUR*q_id);
         
         // source_state->robot_pose().visualize(250/NUM_SMHA_HEUR*q_id);
         m_cspace_mgr->visualizeAttachedObject(expansion_pose, 250/NUM_SMHA_HEUR*q_id);

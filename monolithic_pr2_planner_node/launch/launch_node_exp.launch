@@ -24,7 +24,9 @@
 
   </node>
   <node pkg="monolithic_pr2_planner_node" type="stlToOctomap" name="stlToOctomap" args="package://monolithic_pr2_planner_node/maps/max_kitchen.dae">
-    <param name="addTableObstacles" value="false"/>
+    <param name="addTableObstacles" value="true"/>
+    <param name="randomizeTableObstacles" value="false"/>
+    <param name="pathToTableObstacleParamFile" value="$(find monolithic_pr2_planner_node)/experiments/tableObstacles.yaml"/>
   </node>
 
   <!--<node pkg="monolithic_pr2_planner_node" type="stlToOctomap"
