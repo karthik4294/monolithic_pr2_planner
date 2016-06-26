@@ -93,10 +93,18 @@ int EnvironmentMonolithic::GetGoalHeuristic(int heuristic_id, int stateID) {
       (*values).at("admissible_base") = 0;
     }
 
+    /**
+    //(Karthik) making end_eff_rot heuristic admissible for Hstar
+    //Idea is to normalize by maximum heuristic possible and scale it to maximum arm motion cost(which is 40 for some reason)
+    **/
+    int ad_endeff_rot = 0;//((*values).at("endeff_rot_goal")) * (40/ (3*M_PI*1000) );
+
+    //ROS_INFO("the heuristics are base : %d endeff : %d endeff_rot : %d", (*values).at("admissible_endeff"), (*values).at("admissible_base"), ad_endeff_rot);
+
     if(!m_use_new_heuristics){
       switch (heuristic_id) {
         case 0:  // Anchor
-          return std::max((*values).at("admissible_endeff"), (*values).at("admissible_base"));
+          return std::max( std::max( (*values).at("admissible_endeff"), (*values).at("admissible_base") ),  ad_endeff_rot);
         case 1:  // ARA Heur 
           return std::max((*values).at("admissible_endeff"), (*values).at("admissible_base"));
         case 2:  // Base1, Base2 heur
@@ -111,7 +119,7 @@ int EnvironmentMonolithic::GetGoalHeuristic(int heuristic_id, int stateID) {
       int ad_base = (*values).at("admissible_base");
       int ad_endeff = (*values).at("admissible_endeff");
 
-      int anchor_h = std::max(ad_base, ad_endeff);
+      int anchor_h = std::max( std::max(ad_base, ad_endeff) , ad_endeff_rot);
       int endeff_rot_goal = (*values).at("endeff_rot_goal");
 
       int inad_arm_heur = static_cast<int>(0.1*(*values).at("endeff_rot_goal") + 0.1*ad_endeff);

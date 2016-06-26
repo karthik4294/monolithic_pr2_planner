@@ -756,8 +756,6 @@ bool EnvInterfaces::runPPMAPlanner(int planner_type,
 
             }
             else{
-                //ROS_INFO("Tip count : %d base x : %f y : %f z : %f theta : %f", tip_count, base.x(), base.y(), base.z(), base.theta());
-                //getchar();
                 RightContArmState temp_r_arm({-0.2, 1.1072800, -1.5566882, -2.124408, 0.0, -1.57, 0.0});
                 LeftContArmState temp_l_arm({0.038946, 1.214670, 1.396356, -1.197227, -4.616317, -0.988727, 1.175568});
                 if(!c1)

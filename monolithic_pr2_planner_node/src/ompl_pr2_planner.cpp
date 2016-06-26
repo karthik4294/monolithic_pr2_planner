@@ -171,10 +171,10 @@ bool OMPLPR2Planner::createStartGoal(FullState& ompl_start, FullState& ompl_goal
     normalized_theta = angles::normalize_angle(req.base_goal.theta());
     ompl_goal->as<SE2State>(1)->setYaw(normalized_theta);
     
-    // ROS_INFO("Goal : obj xyzrpy (%f %f %f %f %f %f) base xyztheta (%f %f %f %f) Upper arm roll (%f %f)",
-    //       goal_obj_state.x(), goal_obj_state.y(), goal_obj_state.z(), goal_obj_state.roll(), goal_obj_state.pitch(), goal_obj_state.yaw(),
-    //       req.base_goal.x(), req.base_goal.y(), req.base_goal.z(), normalized_theta,
-    //       req.right_arm_goal.getUpperArmRollAngle(), req.left_arm_goal.getUpperArmRollAngle());
+    ROS_INFO("Goal : obj xyzrpy (%f %f %f %f %f %f) base xyztheta (%f %f %f %f) Upper arm roll (%f %f)",
+          goal_obj_state.x(), goal_obj_state.y(), goal_obj_state.z(), goal_obj_state.roll(), goal_obj_state.pitch(), goal_obj_state.yaw(),
+          req.base_goal.x(), req.base_goal.y(), req.base_goal.z(), normalized_theta,
+          req.right_arm_goal.getUpperArmRollAngle(), req.left_arm_goal.getUpperArmRollAngle());
 
     return (planner->getSpaceInformation()->isValid(ompl_goal.get()) && 
             planner->getSpaceInformation()->isValid(ompl_start.get()));
@@ -298,7 +298,7 @@ bool OMPLPR2Planner::planPathCallback(SearchRequestParams& search_request, int t
         vector<RobotState> robot_states;
         vector<ContBaseState> base_states;
 
-        for(unsigned int i=0; i<geo_path.getStateCount()-1; i++){
+        for(unsigned int i=0; i<geo_path.getStateCount()-2; i++){
             ompl::base::State* state = geo_path.getState(i);
             ompl::base::State* next_state = geo_path.getState(i+1);
 
