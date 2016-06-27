@@ -6,7 +6,7 @@
 using namespace monolithic_pr2_planner_node;
 using namespace monolithic_pr2_planner;
 
-Node::Node(ros::NodeHandle nh) : m_env(new Environment(nh)), m_mon_env(new EnvironmentMonolithic(nh)), m_env_interface(m_mon_env, nh)
+Node::Node(ros::NodeHandle nh) : /*m_env(new Environment(nh)),*/ m_mon_env(new EnvironmentMonolithic(nh)), m_env_interface(m_mon_env, nh)
 {
 
     m_env_interface.bindPlanPathToEnv("/sbpl_planning/plan_path");

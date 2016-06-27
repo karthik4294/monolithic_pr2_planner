@@ -6,7 +6,7 @@ using namespace monolithic_pr2_planner;
 using namespace std;
 using namespace boost;
 
-MotionPrimitivesMgr::MotionPrimitivesMgr(boost::shared_ptr<GoalState>& goal) : m_all_mprims(5){ }
+MotionPrimitivesMgr::MotionPrimitivesMgr(boost::shared_ptr<GoalState>& goal) : m_all_mprims(6){m_goal = goal;}
 
 /*! \brief loads all mprims from configuration. also sets up amps. note that
  * these are not necessarily the exact mprims used during search, because
@@ -46,11 +46,16 @@ bool MotionPrimitivesMgr::loadMPrims(const MotionPrimitiveParams& params){
     torso_mprims.push_back(t_mprim1);
     torso_mprims.push_back(t_mprim2);
 
+    MPrimList fullbody_snap_mprims;
+    FullBodySnapMotionPrimitivePtr  fbs_mprim = make_shared<FullBodySnapMotionPrimitive>(m_goal);
+    fullbody_snap_mprims.push_back(fbs_mprim);
+
     m_all_mprims[MPrim_Types::ARM] = arm_mprims;
     m_all_mprims[MPrim_Types::BASE] = base_mprims;
     m_all_mprims[MPrim_Types::TORSO] = torso_mprims;
     m_all_mprims[MPrim_Types::ARM_ADAPTIVE] = arm_amps;
     m_all_mprims[MPrim_Types::BASE_ADAPTIVE] = base_amps;
+    m_all_mprims[MPrim_Types::FULLBODY_SNAP] = fullbody_snap_mprims;
 
     computeAllMPrimCosts(m_all_mprims);
 
@@ -105,6 +110,10 @@ void MotionPrimitivesMgr::loadArmOnlyMPrims(){
     combineVectors(m_all_mprims[MPrim_Types::ARM_ADAPTIVE], m_active_mprims);
 }
 
+void MotionPrimitivesMgr::loadFullBodySnapMPrims(){
+    combineVectors(m_all_mprims[MPrim_Types::FULLBODY_SNAP], m_active_mprims);
+}
+
 void MotionPrimitivesMgr::loadAllMPrims(){
     loadBaseOnlyMPrims();
     loadArmOnlyMPrims();
@@ -117,4 +126,8 @@ void MotionPrimitivesMgr::computeAllMPrimCosts(vector<MPrimList> mprims){
             mprim->computeCost(m_params);
         }
     }
+}
+
+void MotionPrimitivesMgr::searchNearGoal(){
+    loadFullBodySnapMPrims();
 }

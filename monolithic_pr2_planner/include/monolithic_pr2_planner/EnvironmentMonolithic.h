@@ -101,6 +101,7 @@ namespace monolithic_pr2_planner {
             bool m_use_new_heuristics;
 
             ompl::base::SpaceInformationPtr si_;
+            bool m_goal_near_search;
 
         // SBPL interface stuff
         public:

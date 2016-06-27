@@ -9,6 +9,7 @@
 #include <monolithic_pr2_planner/MotionPrimitives/ArmMotionPrimitive.h>
 #include <monolithic_pr2_planner/MotionPrimitives/BaseMotionPrimitive.h>
 #include <monolithic_pr2_planner/MotionPrimitives/TorsoMotionPrimitive.h>
+#include <monolithic_pr2_planner/MotionPrimitives/FullBodySnapMotionPrimitive.h>
 #include <monolithic_pr2_planner/StateReps/GoalState.h>
 #include <monolithic_pr2_planner/StateReps/GraphState.h>
 
@@ -21,11 +22,14 @@ namespace monolithic_pr2_planner {
             bool loadMPrims(const MotionPrimitiveParams& files);
             void loadMPrimSet(int planning_mode);
             std::vector<MotionPrimitivePtr> getMotionPrims() { return m_active_mprims; };
+            void searchNearGoal();
         private:
             void loadBaseOnlyMPrims();
             void loadArmOnlyMPrims();
             void loadAllMPrims();
             void loadTorsoMPrims();
+            void loadFullBodySnapMPrims();
+
             // these are all the possible mprims we have
             std::vector<std::vector<MotionPrimitivePtr> > m_all_mprims;
             void computeAllMPrimCosts(std::vector<MPrimList> mprims);

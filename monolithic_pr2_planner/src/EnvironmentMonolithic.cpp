@@ -18,10 +18,12 @@ using namespace boost;
 // stateid2mapping pointer inherited from sbpl interface. needed for planner.
 EnvironmentMonolithic::EnvironmentMonolithic(ros::NodeHandle nh)
     :   m_hash_mgr(new HashManager(&StateID2IndexMapping)),
-        m_nodehandle(nh), m_mprims(m_goal),
+        m_nodehandle(nh), //m_mprims(m_goal),
         m_heur_mgr(new HeuristicMgr()),
         m_using_lazy(false),
         m_planner_type(T_SMHA) {
+        m_goal = make_shared<GoalState>();
+        m_mprims = MotionPrimitivesMgr(m_goal);
         m_param_catalog.fetch(nh);
         configurePlanningDomain();
 }
@@ -76,8 +78,11 @@ int EnvironmentMonolithic::GetGoalHeuristic(int stateID) {
 
 int EnvironmentMonolithic::GetGoalHeuristic(int heuristic_id, int stateID) {
     GraphStatePtr successor = m_hash_mgr->getGraphState(stateID);
-    if(m_goal->isSatisfiedBy(successor) || stateID == GOAL_STATE){
+    if(m_goal->isSatisfiedBy(successor, m_goal_near_search) || stateID == GOAL_STATE){
         return 0;
+    }
+    if(stateID == GOAL_STATE){
+      m_goal_near_search = false;
     }
     std::unique_ptr<stringintmap> values;
     m_heur_mgr->getGoalHeuristic(successor, values);
@@ -350,6 +355,12 @@ void EnvironmentMonolithic::GetSuccs(int q_id, int sourceStateID, vector<int>* s
     ROS_DEBUG_NAMED(SEARCH_LOG, 
             "==================Expanding state %d==================", 
                     sourceStateID);
+
+    //Add Full body snap if search near goal
+    // if(m_goal_near_search){
+    //   m_mprims.searchNearGoal();
+    // }
+
     succIDs->clear();
     succIDs->reserve(m_mprims.getMotionPrims().size());
     costs->clear();
@@ -422,7 +433,7 @@ void EnvironmentMonolithic::GetSuccs(int q_id, int sourceStateID, vector<int>* s
             //************************DEBUG*********************//
 
 
-            if (m_goal->isSatisfiedBy(successor)){
+            if (m_goal->isSatisfiedBy(successor, m_goal_near_search)){
                 m_goal->storeAsSolnState(successor);
                 ROS_DEBUG_NAMED(SEARCH_LOG, "Found potential goal at state %d %d", successor->id(),
                     mprim->cost());
@@ -469,6 +480,13 @@ void EnvironmentMonolithic::GetLazySuccs(int q_id, int sourceStateID, vector<int
   vector<MotionPrimitivePtr> all_mprims = m_mprims.getMotionPrims();
     ROS_DEBUG_NAMED(SEARCH_LOG, "==================Expanding state %d==================", 
                     sourceStateID);
+
+    //Add Full body snap if goal near search
+    if(m_goal_near_search){
+      ROS_INFO("Search near goal");
+      m_mprims.searchNearGoal();
+    }
+
     succIDs->clear();
     succIDs->reserve(all_mprims.size());
     costs->clear();
@@ -509,7 +527,7 @@ void EnvironmentMonolithic::GetLazySuccs(int q_id, int sourceStateID, vector<int
         m_hash_mgr->save(successor);
         Edge key; 
 
-        if (m_goal->isSatisfiedBy(successor)){
+        if (m_goal->isSatisfiedBy(successor, m_goal_near_search)){
           m_goal->storeAsSolnState(successor);
           //ROS_DEBUG_NAMED(SEARCH_LOG, "Found potential goal at state %d %d", successor->id(),
             //  mprim->cost());
@@ -616,10 +634,7 @@ bool EnvironmentMonolithic::setStartGoal(SearchRequestPtr search_request,
     goal_id = goal_graph_state->id();
     assert(m_hash_mgr->getGraphState(goal_graph_state->id()) == goal_graph_state);
 
-    goal_pose.visualize();
-
-    getchar();
-
+    //goal_pose.visualize();
 
     m_goal = search_request->createGoalState();
 
