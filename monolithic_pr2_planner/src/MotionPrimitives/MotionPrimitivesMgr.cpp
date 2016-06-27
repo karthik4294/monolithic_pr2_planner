@@ -47,7 +47,7 @@ bool MotionPrimitivesMgr::loadMPrims(const MotionPrimitiveParams& params){
     torso_mprims.push_back(t_mprim2);
 
     MPrimList fullbody_snap_mprims;
-    FullBodySnapMotionPrimitivePtr  fbs_mprim = make_shared<FullBodySnapMotionPrimitive>(m_goal);
+    fbs_mprim = make_shared<FullBodySnapMotionPrimitive>(m_goal);
     fullbody_snap_mprims.push_back(fbs_mprim);
 
     m_all_mprims[MPrim_Types::ARM] = arm_mprims;
@@ -129,5 +129,6 @@ void MotionPrimitivesMgr::computeAllMPrimCosts(vector<MPrimList> mprims){
 }
 
 void MotionPrimitivesMgr::searchNearGoal(){
+    fbs_mprim->getUpdatedGoal(m_goal);
     loadFullBodySnapMPrims();
 }

@@ -18,12 +18,12 @@ using namespace boost;
 // stateid2mapping pointer inherited from sbpl interface. needed for planner.
 EnvironmentMonolithic::EnvironmentMonolithic(ros::NodeHandle nh)
     :   m_hash_mgr(new HashManager(&StateID2IndexMapping)),
-        m_nodehandle(nh), //m_mprims(m_goal),
+        m_nodehandle(nh), m_mprims(m_goal),
         m_heur_mgr(new HeuristicMgr()),
         m_using_lazy(false),
         m_planner_type(T_SMHA) {
-        m_goal = make_shared<GoalState>();
-        m_mprims = MotionPrimitivesMgr(m_goal);
+        //m_goal = make_shared<GoalState>();
+        //m_mprims = MotionPrimitivesMgr(m_goal);
         m_param_catalog.fetch(nh);
         configurePlanningDomain();
 }
@@ -91,18 +91,11 @@ int EnvironmentMonolithic::GetGoalHeuristic(int heuristic_id, int stateID) {
         ROS_DEBUG_NAMED(HEUR_LOG, "%s : %d", heur.first.c_str(), heur.second);
     }
 
-    // //Check for base heuristic when end_eff heur is 0
-    // if((*values).at("admissible_endeff") == 0 && (*values).at("admissible_base") != 0)
-    // {
-    //   ROS_WARN("End effector heuristic is zero but base heuristic is not!!! Check your goal radius. Setting the base heuristic to zero for now");
-    //   (*values).at("admissible_base") = 0;
-    // }
-
     /**
     //(Karthik) making end_eff_rot heuristic admissible for Hstar
     //Idea is to normalize by maximum heuristic possible and scale it to maximum arm motion cost(which is 40 for some reason)
     **/
-    int ad_endeff_rot = 0;//((*values).at("endeff_rot_goal")) * (40/ (3*M_PI*1000) );
+    int ad_endeff_rot = ((*values).at("endeff_rot_goal")) * (40/ (3*M_PI*1000) );
 
     //ROS_INFO("the heuristics are base : %d endeff : %d endeff_rot : %d", (*values).at("admissible_endeff"), (*values).at("admissible_base"), ad_endeff_rot);
 
@@ -357,9 +350,10 @@ void EnvironmentMonolithic::GetSuccs(int q_id, int sourceStateID, vector<int>* s
                     sourceStateID);
 
     //Add Full body snap if search near goal
-    // if(m_goal_near_search){
-    //   m_mprims.searchNearGoal();
-    // }
+    if(m_goal_near_search){
+      m_mprims.getUpdatedGoal(m_goal);
+      m_mprims.searchNearGoal();
+    }
 
     succIDs->clear();
     succIDs->reserve(m_mprims.getMotionPrims().size());
@@ -388,7 +382,7 @@ void EnvironmentMonolithic::GetSuccs(int q_id, int sourceStateID, vector<int>* s
         //************************DEBUG*********************//
 
         //Karthik
-        expansion_pose.visualize(250/NUM_SMHA_HEUR*q_id);
+        //expansion_pose.visualize(250/NUM_SMHA_HEUR*q_id);
         
         // source_state->robot_pose().visualize(250/NUM_SMHA_HEUR*q_id);
         m_cspace_mgr->visualizeAttachedObject(expansion_pose, 250/NUM_SMHA_HEUR*q_id);

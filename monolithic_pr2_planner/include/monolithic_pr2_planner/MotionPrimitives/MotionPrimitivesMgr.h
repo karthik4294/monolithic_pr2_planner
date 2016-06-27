@@ -23,6 +23,7 @@ namespace monolithic_pr2_planner {
             void loadMPrimSet(int planning_mode);
             std::vector<MotionPrimitivePtr> getMotionPrims() { return m_active_mprims; };
             void searchNearGoal();
+            void getUpdatedGoal(GoalStatePtr& goal){ m_goal = goal;}
         private:
             void loadBaseOnlyMPrims();
             void loadArmOnlyMPrims();
@@ -43,5 +44,6 @@ namespace monolithic_pr2_planner {
             std::vector<MotionPrimitivePtr> m_active_mprims;
             MotionPrimitiveParams m_params;
             GoalStatePtr m_goal;
+            FullBodySnapMotionPrimitivePtr fbs_mprim;
     };
 }

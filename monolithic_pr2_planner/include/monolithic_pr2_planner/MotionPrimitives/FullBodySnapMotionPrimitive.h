@@ -18,6 +18,7 @@ namespace monolithic_pr2_planner {
       bool computeIntermSteps(const GraphState& source_state, 
                         const GraphState& successor, 
                         TransitionData& t_data);
+      void getUpdatedGoal(GoalStatePtr& goal){ m_goal = goal;}
       GoalStatePtr m_goal;
   };
   typedef boost::shared_ptr<FullBodySnapMotionPrimitive> FullBodySnapMotionPrimitivePtr;

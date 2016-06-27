@@ -121,9 +121,9 @@ bool GoalState::isSatisfiedBy(const GraphStatePtr& graph_state, bool & search_ne
     DiscObjectState obj = graph_state->getObjectStateRelMap();
 
 
-    bool within_xyz_tol = (abs(m_goal_state.getObjectStateRelMap().getDiscObjectState().x()-obj.x()) < 2*d_tol.x() &&
-                           abs(m_goal_state.getObjectStateRelMap().getDiscObjectState().y()-obj.y()) < 2*d_tol.y() &&
-                           abs(m_goal_state.getObjectStateRelMap().getDiscObjectState().z()-obj.z()) < 2*d_tol.z());
+    bool within_xyz_tol = (abs(m_goal_state.getObjectStateRelMap().getDiscObjectState().x()-obj.x()) < d_tol.x() &&
+                           abs(m_goal_state.getObjectStateRelMap().getDiscObjectState().y()-obj.y()) < d_tol.y() &&
+                           abs(m_goal_state.getObjectStateRelMap().getDiscObjectState().z()-obj.z()) < d_tol.z());
     // bool within_rpy_tol = (abs(m_goal_state.roll()-obj.roll()) < d_tol.roll() &&
     //                        abs(m_goal_state.pitch()-obj.pitch()) < d_tol.pitch() &&
     //                        abs(m_goal_state.yaw()-obj.yaw()) < d_tol.yaw());
@@ -140,12 +140,12 @@ bool GoalState::isSatisfiedBy(const GraphStatePtr& graph_state, bool & search_ne
 
     double diff = quat_state.angleShortestPath(quat_goal);
 
-    within_quat_tol = diff < d_tol.roll();      //should be another parameter d_tol.quat()
+    within_quat_tol = diff < 0.1*d_tol.roll();      //should be another parameter d_tol.quat()
 
     // ROS_INFO("Goal Endeff quat: %f tol : %d", diff, d_tol.roll());
 
-    bool within_basexy_tol = (abs(m_goal_state.base_state().x()-base.x()) < 4*d_tol.x() &&
-                               abs(m_goal_state.base_state().y()-base.y()) < 4*d_tol.y());
+    bool within_basexy_tol = (abs(m_goal_state.base_state().x()-base.x()) < 1.5*d_tol.x() &&
+                               abs(m_goal_state.base_state().y()-base.y()) < 1.5*d_tol.y());
     
     // ROS_INFO("Goal Base x: %d State Base x: %d tol : %d", m_goal_state.base_state().x(), base.x(), d_tol.x());
     // ROS_INFO("Goal Base y: %d State Base y: %d tol : %d", m_goal_state.base_state().y(), base.y(), d_tol.y());
@@ -162,7 +162,7 @@ bool GoalState::isSatisfiedBy(const GraphStatePtr& graph_state, bool & search_ne
 
     if(within_xyz_tol && within_quat_tol && within_basexy_tol)
     { 
-      //ROS_INFO("[GoalState] Search near goal");
+      ROS_INFO("[GoalState] Search near goal");
       search_near_goal = true;
     }
     // else{

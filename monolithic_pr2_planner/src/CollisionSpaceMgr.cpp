@@ -122,12 +122,8 @@ bool CollisionSpaceMgr::isValidSuccessor(const GraphState& successor,
         return m_cspace->checkSpineMotion(l_arm, r_arm, body_pose, verbose, 
                                           dist, debug);
     } else if (t_data.motion_type() == MPrim_Types::FULLBODY_SNAP){
-        bool junta =  ( m_cspace->checkBaseMotion(l_arm, r_arm, body_pose, verbose, dist, debug) &&
-                 m_cspace->checkArmsMotion(l_arm, r_arm, body_pose, verbose, dist, debug) && 
-                 m_cspace->checkSpineMotion(l_arm, r_arm, body_pose, verbose, dist, debug) );
+        return m_cspace->checkAllMotion(l_arm, r_arm, body_pose, verbose, dist, debug);
 
-        //ROS_INFO("Valid succ %d", junta);
-        return junta;
     }else {
         throw std::invalid_argument("not a valid motion primitive type");
     }
@@ -186,14 +182,7 @@ bool CollisionSpaceMgr::isValidTransitionStates(const TransitionData& t_data){
         } else if (t_data.motion_type() == MPrim_Types::FULLBODY_SNAP){
             interp_base_motions = t_data.cont_base_interm_steps();
             BodyPose body_pose = interp_base_motions[idx].body_pose();
-            bool base_motion = m_cspace->checkBaseMotion(l_arm, r_arm, body_pose, verbose, dist, debug);
-            bool arm_motion = m_cspace->checkArmsMotion(l_arm, r_arm, body_pose, verbose, dist, debug);
-            bool spine_motion = m_cspace->checkSpineMotion(l_arm, r_arm, body_pose, verbose, dist, debug);
-
-            bool junta =  (base_motion && arm_motion && spine_motion);
-            //ROS_INFO("Valid transitions %d", junta);
-
-            return junta;
+            return m_cspace->checkAllMotion(l_arm, r_arm, body_pose, verbose, dist, debug);
 
         }else {
             throw std::invalid_argument("not a valid motion primitive type");
