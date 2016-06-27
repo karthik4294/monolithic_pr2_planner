@@ -412,7 +412,8 @@ void EnvironmentMonolithic::GetSuccs(int q_id, int sourceStateID, vector<int>* s
             RobotState succ_pose = successor->robot_pose();
 
             //************************DEBUG*********************//        
-            // ROS_INFO("Succ:");
+            // if(successor->id() == 1){
+            // ROS_INFO("Goal Succ:");
             // ContBaseState base_state = succ_pose.getContBaseState();
             // RightContArmState right_arm_state = succ_pose.right_arm();
             // LeftContArmState left_arm_state = succ_pose.left_arm();
@@ -423,7 +424,7 @@ void EnvironmentMonolithic::GetSuccs(int q_id, int sourceStateID, vector<int>* s
             // ROS_INFO("Upper arm Roll : %f %f", right_arm_state.getUpperArmRollAngle(), left_arm_state.getUpperArmRollAngle());
             // ROS_INFO("Right arm angles : %f %f %f %f %f %f %f", r_angles[0],r_angles[1],r_angles[2],r_angles[3],r_angles[4],r_angles[5],r_angles[6]) ;        
             // ROS_INFO("Torso : %f", base_state.z());
-            // ROS_INFO("Base : %f %f %f", base_state.x(), base_state.y(), base_state.theta());
+            // ROS_INFO("Base : %f %f %f", base_state.x(), base_state.y(), base_state.theta());}
             //************************DEBUG*********************//
 
 
@@ -628,7 +629,10 @@ bool EnvironmentMonolithic::setStartGoal(SearchRequestPtr search_request,
     goal_id = goal_graph_state->id();
     assert(m_hash_mgr->getGraphState(goal_graph_state->id()) == goal_graph_state);
 
-    //goal_pose.visualize();
+    RobotState goal_robot_graph = goal_graph_state->robot_pose();
+
+    goal_robot_graph.visualize();
+    getchar();
 
     m_goal = search_request->createGoalState();
 

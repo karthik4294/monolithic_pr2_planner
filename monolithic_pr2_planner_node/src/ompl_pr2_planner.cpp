@@ -297,8 +297,8 @@ bool OMPLPR2Planner::planPathCallback(SearchRequestParams& search_request, int t
         data.shortcut_time = reduction_time;
         vector<RobotState> robot_states;
         vector<ContBaseState> base_states;
+        for(unsigned int i = 0; i < geo_path.getStateCount()-1; i++){
 
-        for(unsigned int i=0; i<geo_path.getStateCount()-1; i++){
             ompl::base::State* state = geo_path.getState(i);
             ompl::base::State* next_state = geo_path.getState(i+1);
 
@@ -306,22 +306,66 @@ bool OMPLPR2Planner::planPathCallback(SearchRequestParams& search_request, int t
             ContBaseState base, next_base;
             std::vector<RobotState> interp_steps;
 
-            if (convertFullState(state, robot_state, base) && convertFullState(next_state, next_robot_state, next_base)){
+            bool w_interpolate, j_interpolate;
+
+            bool c1 = convertFullState(state, robot_state, base);
+            bool c2 = convertFullState(next_state, next_robot_state, next_base); 
+
+            if ( c1 && c2){
                 
-                bool w_interpolate = RobotState::workspaceInterpolate(robot_state, next_robot_state, &interp_steps); 
+                w_interpolate = RobotState::workspaceInterpolate(robot_state, next_robot_state, &interp_steps); 
 
                 if (!w_interpolate) {
                     interp_steps.clear();
-                    bool j_interpolate = RobotState::jointSpaceInterpolate(robot_state, next_robot_state, &interp_steps);
+                    j_interpolate = RobotState::jointSpaceInterpolate(robot_state, next_robot_state, &interp_steps);
                 }
 
             }
             else{
+                RightContArmState temp_r_arm({-0.2, 1.1072800, -1.5566882, -2.124408, 0.0, -1.57, 0.0});
+                LeftContArmState temp_l_arm({0.038946, 1.214670, 1.396356, -1.197227, -4.616317, -0.988727, 1.175568});
+                if(!c1)
+                {
+                  RobotState temp_state(base, temp_r_arm, temp_l_arm);
+                  robot_state = temp_state;
+                }
+                if(!c2)
+                {
+                  RobotState next_temp_state(next_base, temp_r_arm, temp_l_arm);
+                  next_robot_state = next_temp_state;
+                }
+
                 interp_steps.clear();
-                bool j_interpolate = RobotState::jointSpaceInterpolate(robot_state, next_robot_state, &interp_steps);
+                  
+                // interp_steps.push_back(robot_state);
+                // interp_steps.push_back(next_robot_state);
+                w_interpolate = RobotState::workspaceInterpolate(robot_state, next_robot_state, &interp_steps); 
+
+                if (!w_interpolate) 
+                {
+                    interp_steps.clear();
+                    j_interpolate = RobotState::jointSpaceInterpolate(robot_state, next_robot_state, &interp_steps);
+                }
             }
 
+            // if(!w_interpolate && !j_interpolate)
+            //  continue;
+
             vector<double> l_arm, r_arm;
+            BodyPose bp;
+
+            if(i == 0)
+            {
+              robot_states.push_back(robot_state);
+              base_states.push_back(base);
+
+              robot_state.right_arm().getAngles(&r_arm);
+              robot_state.left_arm().getAngles(&l_arm);
+              bp = next_robot_state.getContBaseState().body_pose();
+              Visualizer::pviz->visualizeRobot(r_arm, l_arm, bp, 150, "robot", 0);
+              usleep(5000);
+            }
+
             for(size_t  j = 0; j < interp_steps.size(); j++)
             {
                 robot_states.push_back(interp_steps[j]);
@@ -329,11 +373,21 @@ bool OMPLPR2Planner::planPathCallback(SearchRequestParams& search_request, int t
 
                 interp_steps[j].right_arm().getAngles(&r_arm);
                 interp_steps[j].left_arm().getAngles(&l_arm);
-                BodyPose bp = interp_steps[j].getContBaseState().body_pose();
-            
+                bp = interp_steps[j].getContBaseState().body_pose();
+                Visualizer::pviz->visualizeRobot(r_arm, l_arm, bp, 150, "robot", 0);
+                usleep(5000);
+              
             }
-            // Visualizer::pviz->visualizeRobot(r_arm, l_arm, bp, 150, "robot", 0);
-            // usleep(5000);
+
+            robot_states.push_back(next_robot_state);
+            base_states.push_back(next_base);
+
+            next_robot_state.right_arm().getAngles(&r_arm);
+            next_robot_state.left_arm().getAngles(&l_arm);
+            bp = next_robot_state.getContBaseState().body_pose();
+            Visualizer::pviz->visualizeRobot(r_arm, l_arm, bp, 150, "robot", 0);
+            usleep(5000);
+
         }
         data.robot_state = robot_states;
         data.base = base_states;

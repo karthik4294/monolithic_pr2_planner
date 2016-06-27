@@ -786,6 +786,20 @@ bool EnvInterfaces::runPPMAPlanner(int planner_type,
             //  continue;
 
             vector<double> l_arm, r_arm;
+            BodyPose bp;
+
+            if(i == 0)
+            {
+              robot_states.push_back(robot_state);
+              base_states.push_back(base);
+
+              robot_state.right_arm().getAngles(&r_arm);
+              robot_state.left_arm().getAngles(&l_arm);
+              bp = next_robot_state.getContBaseState().body_pose();
+              Visualizer::pviz->visualizeRobot(r_arm, l_arm, bp, 150, "robot", 0);
+              usleep(5000);
+            }
+
             for(size_t  j = 0; j < interp_steps.size(); j++)
             {
                 robot_states.push_back(interp_steps[j]);
@@ -793,11 +807,21 @@ bool EnvInterfaces::runPPMAPlanner(int planner_type,
 
                 interp_steps[j].right_arm().getAngles(&r_arm);
                 interp_steps[j].left_arm().getAngles(&l_arm);
-                BodyPose bp = interp_steps[j].getContBaseState().body_pose();
-            
+                bp = interp_steps[j].getContBaseState().body_pose();
+                Visualizer::pviz->visualizeRobot(r_arm, l_arm, bp, 150, "robot", 0);
+                usleep(5000);
+              
             }
-            // Visualizer::pviz->visualizeRobot(r_arm, l_arm, bp, 150, "robot", 0);
-            // usleep(5000);
+
+            robot_states.push_back(next_robot_state);
+            base_states.push_back(next_base);
+
+            next_robot_state.right_arm().getAngles(&r_arm);
+            next_robot_state.left_arm().getAngles(&l_arm);
+            bp = next_robot_state.getContBaseState().body_pose();
+            Visualizer::pviz->visualizeRobot(r_arm, l_arm, bp, 150, "robot", 0);
+            usleep(5000);
+
         }
         data.robot_state = robot_states;
         data.base = base_states;
@@ -1289,18 +1313,23 @@ bool EnvInterfaces::convertFullState(ompl::base::State* state, RobotState& robot
     init_l_arm[5] = -0.9887266887318599;
     init_l_arm[6] = 1.1755681069775656;
 
-    LeftContArmState l_arm(init_l_arm);
-    RightContArmState r_arm;
+    vector<double> init_r_arm(7,0);
 
     const ompl::base::CompoundState* s = dynamic_cast<const ompl::base::CompoundState*> (state);
+
+    init_r_arm[2] = (*(s->as<VectorState>(0)))[6];
+
+    LeftContArmState l_arm(init_l_arm);
+    RightContArmState r_arm(init_r_arm);
+
     obj_state.x((*(s->as<VectorState>(0)))[0]);
     obj_state.y((*(s->as<VectorState>(0)))[1]);
     obj_state.z((*(s->as<VectorState>(0)))[2]);
     obj_state.roll((*(s->as<VectorState>(0)))[3]);
     obj_state.pitch((*(s->as<VectorState>(0)))[4]);
     obj_state.yaw((*(s->as<VectorState>(0)))[5]);
-    r_arm.setUpperArmRoll((*(s->as<VectorState>(0)))[6]);
-    l_arm.setUpperArmRoll((*(s->as<VectorState>(0)))[7]);
+    //r_arm.setUpperArmRoll((*(s->as<VectorState>(0)))[6]);
+    //l_arm.setUpperArmRoll((*(s->as<VectorState>(0)))[7]);
     base.z((*(s->as<VectorState>(0)))[8]);
     base.x(s->as<SE2State>(1)->getX());
     base.y(s->as<SE2State>(1)->getY());
@@ -1309,12 +1338,16 @@ bool EnvInterfaces::convertFullState(ompl::base::State* state, RobotState& robot
     RobotState seed_state(base, r_arm, l_arm);
     RobotPosePtr final_state;
 
-    if (!RobotState::computeRobotPose(obj_state, seed_state, final_state))
-    { 
+    if (!RobotState::computeRobotPose(DiscObjectState(obj_state), seed_state, final_state))
+    {
+      RightContArmState temp_r_arm({-0.2, 1.1072800, -1.5566882, -2.124408, 0.0, -1.57, 0.0});
+      RobotState temp_seed_state(base, temp_r_arm, l_arm);
+      if (!RobotState::computeRobotPose(DiscObjectState(obj_state), temp_seed_state, final_state))
         return false;
     }
 
     robot_state = *final_state;
+
     return true;
 
 }

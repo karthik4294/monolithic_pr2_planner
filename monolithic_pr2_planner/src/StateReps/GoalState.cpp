@@ -104,8 +104,10 @@ bool GoalState::isSatisfiedBy(const GraphStatePtr& graph_state){
 bool GoalState::isSatisfiedBy(const GraphStatePtr& graph_state, bool & search_near_goal){
       
     if(graph_state->id() == GOAL_STATE_ID)
+    {
+      ROS_INFO("Snapping to goal");
       return true;
-
+    }
     // not sure why there's a .005 here. ask ben
     ContObjectState c_tol(m_tolerances[Tolerances::XYZ]-.005, 
                           m_tolerances[Tolerances::XYZ]-.005, 
@@ -116,10 +118,9 @@ bool GoalState::isSatisfiedBy(const GraphStatePtr& graph_state, bool & search_ne
     DiscObjectState d_tol = c_tol.getDiscObjectState();
     
     RobotState robot_pose = graph_state->robot_pose();
-    DiscBaseState base = robot_pose.base_state();
-
     DiscObjectState obj = graph_state->getObjectStateRelMap();
-
+    DiscBaseState base = robot_pose.base_state();
+    unsigned int r_free_angle = robot_pose.right_free_angle();
 
     bool within_xyz_tol = (abs(m_goal_state.getObjectStateRelMap().getDiscObjectState().x()-obj.x()) < d_tol.x() &&
                            abs(m_goal_state.getObjectStateRelMap().getDiscObjectState().y()-obj.y()) < d_tol.y() &&
@@ -158,6 +159,10 @@ bool GoalState::isSatisfiedBy(const GraphStatePtr& graph_state, bool & search_ne
 
     // ROS_INFO("Goal Base yaw: %d State Base yaw: %d tol : %d", m_goal_state.base_state().theta(), base.theta(), d_tol.yaw());
 
+    bool within_rfree_tol = (abs(m_goal_state.right_free_angle() - r_free_angle) < d_tol.roll());
+
+    //ROS_INFO("Goal Right free angle: %d State Right free angle: %d tol : %d", m_goal_state.right_free_angle(), r_free_angle, d_tol.roll());
+
     //ROS_INFO("within_xyz_tol %d within_quat_tol %d within_basexy_tol %d", within_xyz_tol, within_quat_tol, within_basexy_tol);
 
     if(within_xyz_tol && within_quat_tol && within_basexy_tol)
@@ -169,7 +174,7 @@ bool GoalState::isSatisfiedBy(const GraphStatePtr& graph_state, bool & search_ne
     //   ROS_INFO("within_xyz_tol : %f  within_quat_tol : %f within_basexy_tol : %f", )
     // }
 
-    if (within_xyz_tol && within_quat_tol &&  within_basexy_tol && within_basez_tol && within_baseyaw_tol){
+    if (within_xyz_tol && within_quat_tol &&  within_basexy_tol && within_basez_tol && within_baseyaw_tol && within_rfree_tol){
         return true;
     } else {
         return false;
