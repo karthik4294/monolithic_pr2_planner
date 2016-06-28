@@ -2,6 +2,29 @@
 #include <ompl/base/StateValidityChecker.h>
 #include <ompl/base/spaces/SE2StateSpace.h>
 #include <monolithic_pr2_planner/CollisionSpaceMgr.h>
+#include <monolithic_pr2_planner/StateReps/RobotState.h>
+#include <monolithic_pr2_planner/StateReps/ContArmState.h>
+#include <monolithic_pr2_planner/StateReps/ContBaseState.h>
+
+#include <ompl/base/SpaceInformation.h>
+#include <ompl/base/StateSpace.h>
+#include <ompl/geometric/SimpleSetup.h>
+#include <ompl/geometric/PathGeometric.h>
+#include <ompl/base/spaces/RealVectorStateSpace.h>
+#include <ompl/base/State.h>
+#include <ompl/base/StateValidityChecker.h>
+#include "ompl/base/goals/GoalState.h"
+#include <ompl/base/OptimizationObjective.h>
+#include <ompl/base/objectives/PathLengthOptimizationObjective.h>
+#include <ompl/base/Cost.h>
+
+
+using namespace monolithic_pr2_planner;
+using namespace std;
+
+typedef ompl::base::RealVectorStateSpace::StateType VectorState;
+typedef ompl::base::SE2StateSpace::StateType SE2State;
+typedef ompl::base::ScopedState<ompl::base::CompoundStateSpace> FullState;
 
 class omplFullBodyCollisionChecker : public ompl::base::StateValidityChecker {
   public:
@@ -16,6 +39,7 @@ class omplFullBodyCollisionChecker : public ompl::base::StateValidityChecker {
     //void generateRandomState(State& s, int region_id);
     inline double randomDouble(double min, double max);
     virtual bool isValid(const ompl::base::State *state) const;
+    bool convertFullState(const ompl::base::State* state, RobotState& robot_state, ContBaseState& base) const;
     std::vector<double> l_arm_init;
 
 };

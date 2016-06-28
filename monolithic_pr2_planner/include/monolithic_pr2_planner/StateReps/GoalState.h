@@ -13,7 +13,6 @@ namespace monolithic_pr2_planner {
             GoalState(RobotState goal_state, double xyz_tol, 
                      double roll_tol, double pitch_tol, double yaw_tol);
             bool isSatisfiedBy(const GraphStatePtr& graph_state);
-            bool isSatisfiedBy(const GraphStatePtr& graph_state, bool & goal_near_search);
             void storeAsSolnState(const GraphStatePtr& state){ m_full_goal_state = state; };
             GraphStatePtr getSolnState(){ return m_full_goal_state; };
             bool isSolnStateID(int state_id);

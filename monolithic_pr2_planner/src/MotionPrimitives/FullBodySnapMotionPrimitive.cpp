@@ -8,13 +8,50 @@ bool FullBodySnapMotionPrimitive::apply(const GraphState& source_state,
                            GraphStatePtr& successor,
                            TransitionData& t_data){
 
-    RobotState rs = m_goal->getRobotState();
-    successor.reset(new GraphState(rs));
-
-    t_data.motion_type(motion_type());
-    t_data.cost(cost());
+    // not sure why there's a .005 here. ask ben
+    ContObjectState c_tol(m_tolerances[Tolerances::XYZ]-.005, 
+                          m_tolerances[Tolerances::XYZ]-.005, 
+                          m_tolerances[Tolerances::XYZ]-.005,
+                          m_tolerances[Tolerances::ROLL],
+                          m_tolerances[Tolerances::PITCH],
+                          m_tolerances[Tolerances::YAW]);
+    DiscObjectState d_tol = c_tol.getDiscObjectState();
     
-    return computeIntermSteps(source_state, *successor, t_data); 
+    RobotState robot_pose = source_state.robot_pose();
+    DiscObjectState obj = source_state.getObjectStateRelMap();
+    DiscBaseState base = robot_pose.base_state();
+    unsigned int r_free_angle = robot_pose.right_free_angle();
+
+    bool within_xyz_tol = (abs(m_goal->getObjectState().x()-obj.x()) < d_tol.x() &&
+                           abs(m_goal->getObjectState().y()-obj.y()) < d_tol.y() &&
+                           abs(m_goal->getObjectState().z()-obj.z()) < d_tol.z());
+
+    // ROS_INFO("Goal Endeff x: %d State Endeff x: %d tol : %d", m_goal->getObjectState().x(), obj.x(), d_tol.x());
+    // ROS_INFO("Goal Endeff y: %d State Endeff y: %d tol : %d", m_goal->getObjectState().y(), obj.y(), d_tol.x());
+    // ROS_INFO("Goal Endeff z: %d State Endeff z: %d tol : %d", m_goal->getObjectState().z(), obj.z(), d_tol.x());
+
+
+    bool within_basexy_tol = (abs(m_goal->getRobotState().base_state().x()-base.x()) < 1.5*d_tol.x() &&
+                               abs(m_goal->getRobotState().base_state().y()-base.y()) < 1.5*d_tol.y());
+    
+    // ROS_INFO("Goal Base x: %d State Base x: %d tol : %d", m_goal->getRobotState().base_state().x(), base.x(), d_tol.x());
+    // ROS_INFO("Goal Base y: %d State Base y: %d tol : %d", m_goal->getRobotState().base_state().y(), base.y(), d_tol.y());
+
+    if(within_xyz_tol && within_basexy_tol)
+    { 
+      ROS_INFO("[FBS] Successor near goal");      
+
+      RobotState rs = m_goal->getRobotState();
+      successor.reset(new GraphState(rs));
+
+      t_data.motion_type(motion_type());
+      t_data.cost(cost());
+    
+     return computeIntermSteps(source_state, *successor, t_data);
+    }
+    else{
+        return false;
+    } 
 }
 
 

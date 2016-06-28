@@ -23,7 +23,10 @@ namespace monolithic_pr2_planner {
             void loadMPrimSet(int planning_mode);
             std::vector<MotionPrimitivePtr> getMotionPrims() { return m_active_mprims; };
             void searchNearGoal();
-            void getUpdatedGoal(GoalStatePtr& goal){ m_goal = goal;}
+            void getUpdatedGoalandTolerances(GoalStatePtr& goal, double xyz_tol, double roll_tol, double pitch_tol, double yaw_tol)
+            {   m_goal = goal;
+                fbs_mprim->getUpdatedGoalandTolerances(m_goal, xyz_tol, roll_tol, pitch_tol, yaw_tol);
+            }
         private:
             void loadBaseOnlyMPrims();
             void loadArmOnlyMPrims();

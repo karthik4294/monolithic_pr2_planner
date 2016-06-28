@@ -171,13 +171,25 @@ bool OMPLPR2Planner::createStartGoal(FullState& ompl_start, FullState& ompl_goal
     normalized_theta = angles::normalize_angle(req.base_goal.theta());
     ompl_goal->as<SE2State>(1)->setYaw(normalized_theta);
     
-    ROS_INFO("Goal : obj xyzrpy (%f %f %f %f %f %f) base xyztheta (%f %f %f %f) Upper arm roll (%f %f)",
-          goal_obj_state.x(), goal_obj_state.y(), goal_obj_state.z(), goal_obj_state.roll(), goal_obj_state.pitch(), goal_obj_state.yaw(),
-          req.base_goal.x(), req.base_goal.y(), req.base_goal.z(), normalized_theta,
-          req.right_arm_goal.getUpperArmRollAngle(), req.left_arm_goal.getUpperArmRollAngle());
+    // ROS_INFO("Goal : obj xyzrpy (%f %f %f %f %f %f) base xyztheta (%f %f %f %f) Upper arm roll (%f %f)",
+    //       goal_obj_state.x(), goal_obj_state.y(), goal_obj_state.z(), goal_obj_state.roll(), goal_obj_state.pitch(), goal_obj_state.yaw(),
+    //       req.base_goal.x(), req.base_goal.y(), req.base_goal.z(), normalized_theta,
+    //       req.right_arm_goal.getUpperArmRollAngle(), req.left_arm_goal.getUpperArmRollAngle());
 
-    return (planner->getSpaceInformation()->isValid(ompl_goal.get()) && 
-            planner->getSpaceInformation()->isValid(ompl_start.get()));
+    bool goal_valid =  planner->getSpaceInformation()->isValid(ompl_goal.get()); 
+    bool start_valid =  planner->getSpaceInformation()->isValid(ompl_start.get());
+
+    if(!goal_valid){
+        ROS_INFO("invalid goal");
+        return false;
+    }
+
+    if(!start_valid){
+        ROS_INFO("invalid start");
+        return false;
+    }
+
+    return true;
 }
 
 // takes in an ompl state and returns a proper robot state that represents the
@@ -188,13 +200,13 @@ bool OMPLPR2Planner::convertFullState(const ompl::base::State* state, monolithic
 
     // fix the l_arm angles
     vector<double> init_l_arm(7,0);
-    init_l_arm[0] = 0.200000;       
-    init_l_arm[1] = 1.400000;
-    init_l_arm[2] = 1.900000;
-    init_l_arm[3] = -0.400000;
-    init_l_arm[4] = -0.100000;
-    init_l_arm[5] = -1.000000;
-    init_l_arm[6] = 0.000000;
+    init_l_arm[0] = (0.038946287971107774);
+    init_l_arm[1] = (1.2146697069025374);
+    init_l_arm[2] = (1.3963556492780154);
+    init_l_arm[3] = -1.1972269899800325;
+    init_l_arm[4] = (-4.616317135720829);
+    init_l_arm[5] = -0.9887266887318599;
+    init_l_arm[6] = 1.1755681069775656;
 
     vector<double> init_r_arm(7,0);
 
@@ -211,8 +223,6 @@ bool OMPLPR2Planner::convertFullState(const ompl::base::State* state, monolithic
     obj_state.roll((*(s->as<VectorState>(0)))[3]);
     obj_state.pitch((*(s->as<VectorState>(0)))[4]);
     obj_state.yaw((*(s->as<VectorState>(0)))[5]);
-    //r_arm.setUpperArmRoll((*(s->as<VectorState>(0)))[6]);
-    //l_arm.setUpperArmRoll((*(s->as<VectorState>(0)))[7]);
     base.z((*(s->as<VectorState>(0)))[8]);
     base.x(s->as<SE2State>(1)->getX());
     base.y(s->as<SE2State>(1)->getY());
@@ -362,8 +372,8 @@ bool OMPLPR2Planner::planPathCallback(SearchRequestParams& search_request, int t
               robot_state.right_arm().getAngles(&r_arm);
               robot_state.left_arm().getAngles(&l_arm);
               bp = next_robot_state.getContBaseState().body_pose();
-              Visualizer::pviz->visualizeRobot(r_arm, l_arm, bp, 150, "robot", 0);
-              usleep(5000);
+              //Visualizer::pviz->visualizeRobot(r_arm, l_arm, bp, 150, "robot", 0);
+              //usleep(5000);
             }
 
             for(size_t  j = 0; j < interp_steps.size(); j++)
@@ -374,8 +384,8 @@ bool OMPLPR2Planner::planPathCallback(SearchRequestParams& search_request, int t
                 interp_steps[j].right_arm().getAngles(&r_arm);
                 interp_steps[j].left_arm().getAngles(&l_arm);
                 bp = interp_steps[j].getContBaseState().body_pose();
-                Visualizer::pviz->visualizeRobot(r_arm, l_arm, bp, 150, "robot", 0);
-                usleep(5000);
+                //Visualizer::pviz->visualizeRobot(r_arm, l_arm, bp, 150, "robot", 0);
+                //usleep(5000);
               
             }
 
@@ -385,8 +395,8 @@ bool OMPLPR2Planner::planPathCallback(SearchRequestParams& search_request, int t
             next_robot_state.right_arm().getAngles(&r_arm);
             next_robot_state.left_arm().getAngles(&l_arm);
             bp = next_robot_state.getContBaseState().body_pose();
-            Visualizer::pviz->visualizeRobot(r_arm, l_arm, bp, 150, "robot", 0);
-            usleep(5000);
+            //Visualizer::pviz->visualizeRobot(r_arm, l_arm, bp, 150, "robot", 0);
+            //usleep(5000);
 
         }
         data.robot_state = robot_states;

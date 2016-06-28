@@ -6,7 +6,7 @@ using namespace monolithic_pr2_planner;
 using namespace std;
 using namespace boost;
 
-MotionPrimitivesMgr::MotionPrimitivesMgr(boost::shared_ptr<GoalState>& goal) : m_all_mprims(6){m_goal = goal;}
+MotionPrimitivesMgr::MotionPrimitivesMgr(GoalStatePtr& goal) : m_all_mprims(6){m_goal = goal;}
 
 /*! \brief loads all mprims from configuration. also sets up amps. note that
  * these are not necessarily the exact mprims used during search, because
@@ -47,7 +47,7 @@ bool MotionPrimitivesMgr::loadMPrims(const MotionPrimitiveParams& params){
     torso_mprims.push_back(t_mprim2);
 
     MPrimList fullbody_snap_mprims;
-    fbs_mprim = make_shared<FullBodySnapMotionPrimitive>(m_goal);
+    fbs_mprim = make_shared<FullBodySnapMotionPrimitive>();
     fullbody_snap_mprims.push_back(fbs_mprim);
 
     m_all_mprims[MPrim_Types::ARM] = arm_mprims;
@@ -118,6 +118,7 @@ void MotionPrimitivesMgr::loadAllMPrims(){
     loadBaseOnlyMPrims();
     loadArmOnlyMPrims();
     loadTorsoMPrims();
+    loadFullBodySnapMPrims();
 }
 
 void MotionPrimitivesMgr::computeAllMPrimCosts(vector<MPrimList> mprims){
@@ -128,7 +129,3 @@ void MotionPrimitivesMgr::computeAllMPrimCosts(vector<MPrimList> mprims){
     }
 }
 
-void MotionPrimitivesMgr::searchNearGoal(){
-    fbs_mprim->getUpdatedGoal(m_goal);
-    loadFullBodySnapMPrims();
-}

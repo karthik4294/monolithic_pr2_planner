@@ -78,12 +78,10 @@ int EnvironmentMonolithic::GetGoalHeuristic(int stateID) {
 
 int EnvironmentMonolithic::GetGoalHeuristic(int heuristic_id, int stateID) {
     GraphStatePtr successor = m_hash_mgr->getGraphState(stateID);
-    if(m_goal->isSatisfiedBy(successor, m_goal_near_search) || stateID == GOAL_STATE){
+    if(m_goal->isSatisfiedBy(successor) || stateID == GOAL_STATE){
         return 0;
     }
-    if(stateID == GOAL_STATE){
-      m_goal_near_search = false;
-    }
+
     std::unique_ptr<stringintmap> values;
     m_heur_mgr->getGoalHeuristic(successor, values);
     
@@ -349,12 +347,6 @@ void EnvironmentMonolithic::GetSuccs(int q_id, int sourceStateID, vector<int>* s
             "==================Expanding state %d==================", 
                     sourceStateID);
 
-    //Add Full body snap if search near goal
-    if(m_goal_near_search){
-      m_mprims.getUpdatedGoal(m_goal);
-      m_mprims.searchNearGoal();
-    }
-
     succIDs->clear();
     succIDs->reserve(m_mprims.getMotionPrims().size());
     costs->clear();
@@ -385,9 +377,9 @@ void EnvironmentMonolithic::GetSuccs(int q_id, int sourceStateID, vector<int>* s
         //expansion_pose.visualize(250/NUM_SMHA_HEUR*q_id);
         
         // source_state->robot_pose().visualize(250/NUM_SMHA_HEUR*q_id);
-        m_cspace_mgr->visualizeAttachedObject(expansion_pose, 250/NUM_SMHA_HEUR*q_id);
+        // /m_cspace_mgr->visualizeAttachedObject(expansion_pose, 250/NUM_SMHA_HEUR*q_id);
         // m_cspace_mgr->visualizeCollisionModel(expansion_pose);
-        usleep(5000);
+        //usleep(5000);
     }
     for (auto mprim : m_mprims.getMotionPrims()) {
         ROS_DEBUG_NAMED(SEARCH_LOG, "Applying motion:");
@@ -428,7 +420,7 @@ void EnvironmentMonolithic::GetSuccs(int q_id, int sourceStateID, vector<int>* s
             //************************DEBUG*********************//
 
 
-            if (m_goal->isSatisfiedBy(successor, m_goal_near_search)){
+            if (m_goal->isSatisfiedBy(successor)){
                 m_goal->storeAsSolnState(successor);
                 ROS_DEBUG_NAMED(SEARCH_LOG, "Found potential goal at state %d %d", successor->id(),
                     mprim->cost());
@@ -476,12 +468,6 @@ void EnvironmentMonolithic::GetLazySuccs(int q_id, int sourceStateID, vector<int
     ROS_DEBUG_NAMED(SEARCH_LOG, "==================Expanding state %d==================", 
                     sourceStateID);
 
-    //Add Full body snap if goal near search
-    if(m_goal_near_search){
-      ROS_INFO("Search near goal");
-      m_mprims.searchNearGoal();
-    }
-
     succIDs->clear();
     succIDs->reserve(all_mprims.size());
     costs->clear();
@@ -522,7 +508,7 @@ void EnvironmentMonolithic::GetLazySuccs(int q_id, int sourceStateID, vector<int
         m_hash_mgr->save(successor);
         Edge key; 
 
-        if (m_goal->isSatisfiedBy(successor, m_goal_near_search)){
+        if (m_goal->isSatisfiedBy(successor)){
           m_goal->storeAsSolnState(successor);
           //ROS_DEBUG_NAMED(SEARCH_LOG, "Found potential goal at state %d %d", successor->id(),
             //  mprim->cost());
@@ -631,8 +617,8 @@ bool EnvironmentMonolithic::setStartGoal(SearchRequestPtr search_request,
 
     RobotState goal_robot_graph = goal_graph_state->robot_pose();
 
-    goal_robot_graph.visualize();
-    getchar();
+    //goal_robot_graph.visualize();
+    //getchar();
 
     m_goal = search_request->createGoalState();
 
@@ -654,6 +640,10 @@ bool EnvironmentMonolithic::setStartGoal(SearchRequestPtr search_request,
 
     // informs the heuristic about the goal
     m_heur_mgr->setGoal(*m_goal);
+
+    //Inform the FBSmprim about the goal and tolerances
+    m_mprims.getUpdatedGoalandTolerances(m_goal, search_request->m_params->xyz_tolerance, search_request->m_params->roll_tolerance,
+                            search_request->m_params->pitch_tolerance, search_request->m_params->yaw_tolerance);
 
     return true;
 }
