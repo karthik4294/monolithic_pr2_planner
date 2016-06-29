@@ -15,7 +15,7 @@ StatsWriter::StatsWriter(int planner_id):m_planner_id(planner_id){
       mkdir("/tmp/planning_stats/", S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
     }
     time_t now = time(0);
-    m_current_path << "/tmp/planning_stats/" << time(&now) <<"/";
+    m_current_path << "/tmp/planning_stats/";// << time(&now) <<"/";
     int status;
     status = mkdir(m_current_path.str().c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH);
     if(status==0){

@@ -2,7 +2,7 @@
 
 rm -r /tmp/planning_stats/*
 
-for i in {0..9}; do
+for i in {6..9}; do
   #the planner expects the environment to stored at tableObstacles.yaml
   #so move the numbered one to this path
   cp experiments/tableObstacles$i.yaml experiments/tableObstacles.yaml

@@ -63,8 +63,9 @@ int BFS2DRotFootprintHeuristic::getGoalHeuristic(GraphStatePtr state){
   }
 
   //cache==1 means we evaluated this cell and found a collision
-  if(cache_[base_x][base_y] == 1)
+  if(cache_[base_x][base_y] == 1){
     return INFINITECOST;
+  }
 
   //cache==2 means we evaluated this cell and found no collision
   if(cache_[base_x][base_y] == 2){

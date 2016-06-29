@@ -580,6 +580,18 @@ bool EnvInterfaces::runPPMAPlanner(int planner_type,
   // ompl::base::SpaceInformationPtr si(new ompl::base::SpaceInformation(*m_rrt->GetSpaceInformationPtr()));
   ompl::base::SpaceInformationPtr si = m_rrt->GetSpaceInformationPtr();
 
+  // LeftContArmState left_arm_goal = search_request->left_arm_goal;
+  // RightContArmState right_arm_goal = search_request->right_arm_goal;
+  // ContBaseState base_goal = search_request->base_goal;
+
+  // std::vector<double> l_arm, r_arm;
+  // right_arm_goal.getAngles(&r_arm);
+  // left_arm_goal.getAngles(&l_arm);
+  // BodyPose bp = base_goal.body_pose();
+
+  // Visualizer::pviz->visualizeRobot(r_arm, l_arm, bp, 150, "robot", 0);
+  // getchar();
+
   ompl::base::ProblemDefinitionPtr pdef(new ompl::base::ProblemDefinition(si));
   pathSimplifier = new ompl::geometric::PathSimplifier(si);
   m_full_body_space = m_rrt->GetStateSpacePtr();

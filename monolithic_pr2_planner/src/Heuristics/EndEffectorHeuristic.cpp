@@ -32,6 +32,8 @@ EndEffectorHeuristic::EndEffectorHeuristic() {
 void EndEffectorHeuristic::setGoal(GoalState& goal_state){
     DiscObjectState state = goal_state.getObjectState(); 
     m_goal = goal_state;
+    ROS_INFO("Goal state Heur endeff: %d %d %d", state.x(), state.y(), state.z());
+    getchar();
     m_bfs->run(state.x(),
                state.y(),
                state.z());
