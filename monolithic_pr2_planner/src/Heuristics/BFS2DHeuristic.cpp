@@ -73,8 +73,12 @@ void BFS2DHeuristic::setGoal(GoalState& goal_state){
     std::vector<std::pair<int,int> > init_points;
     double res = m_occupancy_grid->getResolution();
     int discrete_radius = m_radius/res;
-    getBresenhamCirclePoints(state.x(), state.y(), discrete_radius, init_points);
+    //getBresenhamCirclePoints(state.x(), state.y(), discrete_radius, init_points);
+    // TODO: This is applicable only for fully specified goal states.
+    //init_points.push_back(std::make_pair<int,int>(state.x(), state.y()));
 
+
+    ROS_INFO("Initpoints size %d", init_points.size());
     // Set the goal state to 0,0 - just make sure it's not the start state.
     m_gridsearch->search(m_grid, costmap_2d::INSCRIBED_INFLATED_OBSTACLE, state.x(), state.y(),
         0,0, SBPL_2DGRIDSEARCH_TERM_CONDITION_ALLCELLS, init_points);

@@ -16,6 +16,9 @@ void OccupancyGridUser::init(OccupancyGridParams& params, RobotResolutionParams&
                                                           params.origin.x, 
                                                           params.origin.y,
                                                           params.origin.z);
+
+    //ROS_INFO("Printing occupance grid values. Max Point xyz:  %f, %f, %f Env resolution : %f Origin xyz: %f, %f, %f", 
+    //          params.max_point.x,params.max_point.y,params.max_point.z,params.env_resolution,params.origin.x,params.origin.y,params.origin.z);
     ROS_DEBUG_NAMED(INIT_LOG, "occupancy grid initialized");
     m_occupancy_grid->setReferenceFrame(params.reference_frame);
     m_resolution_params = r_params;

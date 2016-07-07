@@ -12,6 +12,8 @@
 #include <cassert>
 
 #define GOAL_STATE 1
+double METER_TO_MM_MULT = 1000;
+
 using namespace monolithic_pr2_planner;
 using namespace boost;
 
@@ -71,6 +73,23 @@ bool EnvironmentMonolithic::configureRequest(SearchRequestParamsPtr search_reque
     return true;
 }
 
+//euclidean heuristic of end-eff in local frame
+int EnvironmentMonolithic::GetEndEffEuclideanHeuristic(int stateID) {
+
+  GraphStatePtr successor = m_hash_mgr->getGraphState(stateID);
+  RobotState robot_pose = successor->robot_pose();
+  DiscObjectState obj = successor->getObjectStateRelBody();
+
+  GraphStatePtr goal = m_hash_mgr->getGraphState(GOAL_STATE);
+  RobotState goal_robot_pose = goal->robot_pose();
+  DiscObjectState goal_obj = goal->getObjectStateRelBody();
+
+  int euc_dist = 20*sqrt( (goal_obj.x() - obj.x())*(goal_obj.x() - obj.x()) + (goal_obj.y() - obj.y())*(goal_obj.y() - obj.y()) + 
+                  (goal_obj.z() - obj.z())*(goal_obj.z() - obj.z()) );
+
+  return euc_dist;
+
+}
 int EnvironmentMonolithic::GetGoalHeuristic(int stateID) {
     // For now, return the max of all the heuristics
     return GetGoalHeuristic(0, stateID);
@@ -78,9 +97,18 @@ int EnvironmentMonolithic::GetGoalHeuristic(int stateID) {
 
 int EnvironmentMonolithic::GetGoalHeuristic(int heuristic_id, int stateID) {
     GraphStatePtr successor = m_hash_mgr->getGraphState(stateID);
+    GraphStatePtr goal_state = m_hash_mgr->getGraphState(GOAL_STATE);
     if(m_goal->isSatisfiedBy(successor) || stateID == GOAL_STATE){
         return 0;
     }
+
+    bool is_near_base = false;
+
+    
+
+
+    int endeff_euc = GetEndEffEuclideanHeuristic(stateID);
+    bool use_endeff_euc = true;
 
     std::unique_ptr<stringintmap> values;
     m_heur_mgr->getGoalHeuristic(successor, values);
@@ -89,18 +117,29 @@ int EnvironmentMonolithic::GetGoalHeuristic(int heuristic_id, int stateID) {
         ROS_DEBUG_NAMED(HEUR_LOG, "%s : %d", heur.first.c_str(), heur.second);
     }
 
+    if((*values).at("admissible_base") == 0) 
+      is_near_base = true;
     /**
     //(Karthik) making end_eff_rot heuristic admissible for Hstar
     //Idea is to normalize by maximum heuristic possible and scale it to maximum arm motion cost(which is 40 for some reason)
     **/
-    int ad_endeff_rot = ((*values).at("endeff_rot_goal")) * (40/ (3*M_PI*1000) );
+    //int ad_endeff_rot = 0;//((*values).at("endeff_rot_goal")) * (40/ (3*M_PI*1000) );
 
-    //ROS_INFO("the heuristics are base : %d endeff : %d endeff_rot : %d", (*values).at("admissible_endeff"), (*values).at("admissible_base"), ad_endeff_rot);
+    // RobotState robot_state = successor->robot_pose();
+    // double base_yaw = robot_state.base_state().theta();
+    // RobotState goal_robot_state = goal_state->robot_pose();
+    // double goal_base_yaw = goal_robot_state.base_state().theta();
+    // int ad_base_rot = 0;//( METER_TO_MM_MULT * fabs(shortest_angular_distance(goal_base_yaw, base_yaw)) )/m_param_catalog.m_motion_primitive_params.angular_vel;
+
+    //ROS_INFO("The heuristics are endeff : %d base : %d ", (*values).at("admissible_endeff"), (*values).at("admissible_base"));
 
     if(!m_use_new_heuristics){
       switch (heuristic_id) {
         case 0:  // Anchor
-          return std::max( std::max( (*values).at("admissible_endeff"), (*values).at("admissible_base") ),  ad_endeff_rot);
+          if(!is_near_base)
+            return (*values).at("admissible_base");
+          else
+            return std::max( (*values).at("admissible_endeff"), (*values).at("admissible_base") );
         case 1:  // ARA Heur 
           return std::max((*values).at("admissible_endeff"), (*values).at("admissible_base"));
         case 2:  // Base1, Base2 heur
@@ -115,7 +154,7 @@ int EnvironmentMonolithic::GetGoalHeuristic(int heuristic_id, int stateID) {
       int ad_base = (*values).at("admissible_base");
       int ad_endeff = (*values).at("admissible_endeff");
 
-      int anchor_h = std::max( std::max(ad_base, ad_endeff) , ad_endeff_rot);
+      int anchor_h = std::max(ad_base, ad_endeff);
       int endeff_rot_goal = (*values).at("endeff_rot_goal");
 
       int inad_arm_heur = static_cast<int>(0.1*(*values).at("endeff_rot_goal") + 0.1*ad_endeff);
@@ -802,8 +841,6 @@ int EnvironmentMonolithic::GetContStateID(const ompl::base::State* state){
 } 
 
 int EnvironmentMonolithic::GetContEdgeCost(const ompl::base::State *parent, const ompl::base::State *child){
-  
-    double METER_TO_MM_MULT = 1000;
 
     RobotState parent_robot_state, child_robot_state;
     ContBaseState parent_base, child_base;

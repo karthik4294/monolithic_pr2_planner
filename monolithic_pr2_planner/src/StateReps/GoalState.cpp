@@ -101,6 +101,26 @@ bool GoalState::isSatisfiedBy(const GraphStatePtr& graph_state){
     }
 }
 
+bool GoalState::isStateNearDesiredBase(const GraphStatePtr& graph_state){
+
+    ContObjectState c_tol(m_tolerances[Tolerances::XYZ]-.005, 
+                          m_tolerances[Tolerances::XYZ]-.005, 
+                          m_tolerances[Tolerances::XYZ]-.005,
+                          m_tolerances[Tolerances::ROLL],
+                          m_tolerances[Tolerances::PITCH],
+                          m_tolerances[Tolerances::YAW]);
+    DiscObjectState d_tol = c_tol.getDiscObjectState();
+
+    RobotState robot_pose = graph_state->robot_pose();
+    DiscObjectState obj = graph_state->getObjectStateRelMap();
+    DiscBaseState base = robot_pose.base_state();
+
+    return (abs(m_goal_state.base_state().x()-base.x()) < 1.5*d_tol.x() &&
+            abs(m_goal_state.base_state().y()-base.y()) < 1.5*d_tol.y() && 
+            abs(m_goal_state.base_state().theta()-base.theta()) < d_tol.yaw());
+
+}
+
 bool GoalState::isSolnStateID(int state_id){
     for (auto& goal : m_possible_goals){
         if (goal == state_id){

@@ -142,6 +142,7 @@ HeuristicMgr::~HeuristicMgr()
         delete[] m_grid[i];
     }
     delete[] m_grid;
+
 }
 
 /**
@@ -198,7 +199,7 @@ void HeuristicMgr::initializeHeuristics() {
         int cost_multiplier = 1;
         //TODO(karthik) : Since we have a fully specified goal a low radius is set around base x and y
         //Must be read from some config depending on whether fully spec or not 
-        double radius_around_goal = 0.05; //0.75;
+        double radius_around_goal = 0.0;
         add2DHeur("admissible_base", cost_multiplier, radius_around_goal);
     }
 

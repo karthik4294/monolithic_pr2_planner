@@ -26,20 +26,13 @@ bool FullBodySnapMotionPrimitive::apply(const GraphState& source_state,
                            abs(m_goal->getObjectState().y()-obj.y()) < d_tol.y() &&
                            abs(m_goal->getObjectState().z()-obj.z()) < d_tol.z());
 
-    // ROS_INFO("Goal Endeff x: %d State Endeff x: %d tol : %d", m_goal->getObjectState().x(), obj.x(), d_tol.x());
-    // ROS_INFO("Goal Endeff y: %d State Endeff y: %d tol : %d", m_goal->getObjectState().y(), obj.y(), d_tol.x());
-    // ROS_INFO("Goal Endeff z: %d State Endeff z: %d tol : %d", m_goal->getObjectState().z(), obj.z(), d_tol.x());
-
 
     bool within_basexy_tol = (abs(m_goal->getRobotState().base_state().x()-base.x()) < 1.5*d_tol.x() &&
                                abs(m_goal->getRobotState().base_state().y()-base.y()) < 1.5*d_tol.y());
     
-    // ROS_INFO("Goal Base x: %d State Base x: %d tol : %d", m_goal->getRobotState().base_state().x(), base.x(), d_tol.x());
-    // ROS_INFO("Goal Base y: %d State Base y: %d tol : %d", m_goal->getRobotState().base_state().y(), base.y(), d_tol.y());
-
-    if(within_xyz_tol && within_basexy_tol)
+    if(within_basexy_tol)
     { 
-      ROS_INFO("[FBS] Successor near goal");      
+      ROS_INFO("[FBS] Search near goal");      
 
       RobotState rs = m_goal->getRobotState();
       successor.reset(new GraphState(rs));

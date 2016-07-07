@@ -18,10 +18,12 @@ namespace monolithic_pr2_planner {
             bool isSolnStateID(int state_id);
             void addPotentialSolnState(const GraphStatePtr& graph_state);
             DiscObjectState getObjectState() const { return m_goal_state.getObjectStateRelMap().getDiscObjectState(); };
+            DiscObjectState getObjectStateRelBody() const { return m_goal_state.getObjectStateRelBody(); };
             RobotState getRobotState() const { return m_goal_state; };
             void setGoal(RobotState goal_state){m_goal_state = goal_state;};
             bool withinXYZTol(const GraphStatePtr& graph_state);
             void visualize();
+            bool isStateNearDesiredBase(const GraphStatePtr& graph_state);
         private:
             vector<int> m_possible_goals;
             RobotState m_goal_state;
