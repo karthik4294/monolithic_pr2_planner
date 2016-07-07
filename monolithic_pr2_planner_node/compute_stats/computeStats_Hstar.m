@@ -2,10 +2,11 @@ clc; clear;
 
 num = 10;
 
-for t = 1:5
+for t = 1:1
 
-    stats_file = ['stats60_eps100/Batch1/stats_' num2str(t-1)];    
-    
+    %stats_file = ['stats60_eps100/Batch1/stats_' num2str(t-1)];    
+    stats_file = ['stats_' num2str(t-1)];
+
     for i = 1:num
 
         rrt_path = ['../' stats_file '/paths_rrt_' num2str(i-1)  '/rrt_'];
@@ -14,7 +15,7 @@ for t = 1:5
         rrtstarfirstsol_path = ['../' stats_file '/paths_rrtstarfirstsol_' num2str(i-1)  '/rrtstarfirstsol_'];
         prm_path = ['../' stats_file '/paths_prm_' num2str(i-1)  '/prm_'];
         hstar_path = ['../' stats_file '/paths_hstar_' num2str(i-1)  '/hstar_'];
-        wastar_path = ['../' stats_file '/paths_wastar_' num2str(i-1)  '/wastar_'];
+        wastar_path = hstar_path;%['../' stats_file '/paths_wastar_' num2str(i-1)  '/wastar_'];
  
         rrt_stats{t}{i} = computeMethodStats(rrt_path,num,0);
         rrtconnect_stats{t}{i} = computeMethodStats(rrtconnect_path,num,0);

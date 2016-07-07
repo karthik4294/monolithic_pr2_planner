@@ -36,8 +36,8 @@ function printStats(method1, method2, method_name)
 
     fprintf(fileID, '%s %s %0.3f %s %0.3f %s %0.3f %s %0.1f%s\n',method_name,'&',mean(base1,'omitnan')/mean(base2,'omitnan'), ...
                      '&',mean(arm1,'omitnan')/mean(arm2,'omitnan'),'&',mean(time1,'omitnan')/mean(time2,'omitnan'),'&',mean(succ1,'omitnan'),'\\');
-    fprintf(fileID, '%s %s %0.3f %s %0.3f %s %0.3f %s %0.1f%s\n','hstar','&',mean(base2,'omitnan'), ...
-                     '&',mean(arm2,'omitnan'),'&',mean(time2,'omitnan'),'&',mean(succ2,'omitnan'),'\\');  
+    fprintf(fileID, '%s %s %0.3f %s %0.3f %s %0.3f %s %0.1f%s\n','hstar','&',mean(base2,'omitnan')/mean(base2,'omitnan'), ...
+                     '&',mean(arm2,'omitnan')/mean(arm2,'omitnan'),'&',mean(time2,'omitnan')/mean(time2,'omitnan'),'&',mean(succ2,'omitnan'),'\\');  
        
 
 end

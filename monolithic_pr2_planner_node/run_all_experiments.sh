@@ -2,13 +2,13 @@
 
 rm -r /tmp/planning_stats/*
 
-for i in {0..9}; do
+for i in {9..9}; do
   #the planner expects the environment to stored at tableObstacles.yaml
   #so move the numbered one to this path
   cp experiments/tableObstacles$i.yaml experiments/tableObstacles.yaml
 
   # for method in unconstrained_mha focal_mha mha_plus original_mha; do
-  for method in hstar; do
+  for method in rrt rrtconnect rrtstarfirstsol rrtstar prm; do
 
     #create necessary folders
     mkdir -p stats

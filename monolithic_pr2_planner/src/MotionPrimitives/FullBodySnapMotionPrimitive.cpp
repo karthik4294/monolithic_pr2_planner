@@ -27,8 +27,8 @@ bool FullBodySnapMotionPrimitive::apply(const GraphState& source_state,
                            abs(m_goal->getObjectState().z()-obj.z()) < d_tol.z());
 
 
-    bool within_basexy_tol = (abs(m_goal->getRobotState().base_state().x()-base.x()) < 1.5*d_tol.x() &&
-                               abs(m_goal->getRobotState().base_state().y()-base.y()) < 1.5*d_tol.y());
+    bool within_basexy_tol = (abs(m_goal->getRobotState().base_state().x()-base.x()) < 50*d_tol.x() &&
+                              abs(m_goal->getRobotState().base_state().y()-base.y()) < 50*d_tol.y());
     
     if(within_basexy_tol)
     { 
@@ -51,6 +51,8 @@ bool FullBodySnapMotionPrimitive::apply(const GraphState& source_state,
 bool FullBodySnapMotionPrimitive::computeIntermSteps(const GraphState& source_state, 
                         const GraphState& successor, 
                         TransitionData& t_data){
+
+    ROS_DEBUG_NAMED(MPRIM_LOG, "interpolation for full body snap primitive");
     std::vector<RobotState> interp_steps;
     bool interpolate = RobotState::workspaceInterpolate(source_state.robot_pose(), 
                                      successor.robot_pose(),
@@ -63,23 +65,45 @@ bool FullBodySnapMotionPrimitive::computeIntermSteps(const GraphState& source_st
                                     successor.robot_pose(), &interp_steps);
     }
 
-    ROS_DEBUG_NAMED(MPRIM_LOG, "interpolation for full body snap primitive");
     for (auto robot_state: interp_steps){
         robot_state.printToDebug(MPRIM_LOG);
     }
     t_data.interm_robot_steps(interp_steps);
 
-    // fill in the cont base steps to be the same throughout; this is an arm
-    // only motion
-    ContBaseState c_base = source_state.robot_pose().base_state();
-    std::vector<ContBaseState> cont_base_states(interp_steps.size(), c_base);
-    t_data.cont_base_interm_steps(cont_base_states);
-
     if(!interpolate && !j_interpolate)
     {
-        ROS_WARN("No valid interpolation found to snap to full body goal pose");
+        ROS_WARN("No valid arm interpolation found to snap to full body goal pose");
         return false;
     }
+        
+    ContBaseState start_base_state = source_state.robot_pose().base_state();
+    ContBaseState end_base_state = successor.robot_pose().base_state();
+    start_base_state.printToDebug(MPRIM_LOG);
+    end_base_state.printToDebug(MPRIM_LOG);
+    int num_interp_steps = static_cast<int>(interp_steps.size());
+
+    double del_x = end_base_state.x() - start_base_state.x();
+    double del_y = end_base_state.y() - start_base_state.y();
+    double del_z = end_base_state.z() - start_base_state.z();
+    double del_theta = shortest_angular_distance(start_base_state.theta(),
+                                                 end_base_state.theta());
+    
+    vector<ContBaseState> interp_base_states;
+    for (int i=0; i <= num_interp_steps; i++){
+        ContBaseState interm_step = start_base_state;
+        double rotate_by_angle = i*del_theta/num_interp_steps;
+        double dx = i*del_x/num_interp_steps;
+        double dy = i*del_y/num_interp_steps;
+        double dz = i*del_z/num_interp_steps;
+        interm_step.x(start_base_state.x() + dx);
+        interm_step.y(start_base_state.y() + dy);
+        interm_step.z(start_base_state.z() + dz);
+        interm_step.theta(start_base_state.theta() + rotate_by_angle);
+        interp_base_states.push_back(interm_step);
+    }
+
+    t_data.cont_base_interm_steps(interp_base_states);
+    assert(interm_robot_steps.size() == cont_base_state_steps.size());
 
     return true;
 }
@@ -91,5 +115,6 @@ void FullBodySnapMotionPrimitive::print() const {
 }
 
 void FullBodySnapMotionPrimitive::computeCost(const MotionPrimitiveParams& params){
+    //TODO: Calculate actual cost 
     m_cost = 1;
 }

@@ -413,7 +413,7 @@ void EnvironmentMonolithic::GetSuccs(int q_id, int sourceStateID, vector<int>* s
         //************************DEBUG*********************//
 
         //Karthik
-        //expansion_pose.visualize(250/NUM_SMHA_HEUR*q_id);
+        expansion_pose.visualize(250/NUM_SMHA_HEUR*q_id);
         
         // source_state->robot_pose().visualize(250/NUM_SMHA_HEUR*q_id);
         // /m_cspace_mgr->visualizeAttachedObject(expansion_pose, 250/NUM_SMHA_HEUR*q_id);

@@ -1,5 +1,5 @@
 
-for i in {1..4}; do
+for i in {0..4}; do
 	
 	echo "Running batch $i"
 

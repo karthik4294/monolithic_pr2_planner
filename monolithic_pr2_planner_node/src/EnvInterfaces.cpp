@@ -805,8 +805,8 @@ bool EnvInterfaces::runPPMAPlanner(int planner_type,
               robot_state.right_arm().getAngles(&r_arm);
               robot_state.left_arm().getAngles(&l_arm);
               bp = next_robot_state.getContBaseState().body_pose();
-              //Visualizer::pviz->visualizeRobot(r_arm, l_arm, bp, 150, "robot", 0);
-              //usleep(5000);
+              Visualizer::pviz->visualizeRobot(r_arm, l_arm, bp, 150, "robot", 0);
+              usleep(5000);
             }
 
             for(size_t  j = 0; j < interp_steps.size(); j++)
@@ -817,8 +817,8 @@ bool EnvInterfaces::runPPMAPlanner(int planner_type,
                 interp_steps[j].right_arm().getAngles(&r_arm);
                 interp_steps[j].left_arm().getAngles(&l_arm);
                 bp = interp_steps[j].getContBaseState().body_pose();
-                //Visualizer::pviz->visualizeRobot(r_arm, l_arm, bp, 150, "robot", 0);
-                //usleep(5000);
+                Visualizer::pviz->visualizeRobot(r_arm, l_arm, bp, 150, "robot", 0);
+                usleep(5000);
               
             }
 
@@ -828,9 +828,8 @@ bool EnvInterfaces::runPPMAPlanner(int planner_type,
             next_robot_state.right_arm().getAngles(&r_arm);
             next_robot_state.left_arm().getAngles(&l_arm);
             bp = next_robot_state.getContBaseState().body_pose();
-            //Visualizer::pviz->visualizeRobot(r_arm, l_arm, bp, 150, "robot", 0);
-            //usleep(5000);
-
+            Visualizer::pviz->visualizeRobot(r_arm, l_arm, bp, 150, "robot", 0);
+            usleep(5000);
         }
         data.robot_state = robot_states;
         data.base = base_states;
