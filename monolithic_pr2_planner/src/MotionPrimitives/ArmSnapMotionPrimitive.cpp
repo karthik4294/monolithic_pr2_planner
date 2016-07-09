@@ -1,10 +1,10 @@
-#include <monolithic_pr2_planner/MotionPrimitives/FullBodySnapMotionPrimitive.h>
+#include <monolithic_pr2_planner/MotionPrimitives/ArmSnapMotionPrimitive.h>
 #include <monolithic_pr2_planner/LoggerNames.h>
 #include <boost/shared_ptr.hpp>
 
 using namespace monolithic_pr2_planner;
 
-bool FullBodySnapMotionPrimitive::apply(const GraphState& source_state, 
+bool ArmSnapMotionPrimitive::apply(const GraphState& source_state, 
                            GraphStatePtr& successor,
                            TransitionData& t_data){
 
@@ -34,7 +34,7 @@ bool FullBodySnapMotionPrimitive::apply(const GraphState& source_state,
     { 
       //ROS_INFO("[FBS] Search near goal");      
 
-      RobotState rs = m_goal->getRobotState();
+      RobotState rs(source_state.robot_pose().getContBaseState(), m_goal->getRobotState().right_arm(), m_goal->getRobotState().left_arm());
       successor.reset(new GraphState(rs));
 
       t_data.motion_type(motion_type());
@@ -47,11 +47,11 @@ bool FullBodySnapMotionPrimitive::apply(const GraphState& source_state,
     } 
 }
 
-bool FullBodySnapMotionPrimitive::computeIntermSteps(const GraphState& source_state, 
+bool ArmSnapMotionPrimitive::computeIntermSteps(const GraphState& source_state, 
                         const GraphState& successor, 
                         TransitionData& t_data){
 
-    ROS_DEBUG_NAMED(MPRIM_LOG, "interpolation for full body snap primitive");
+    ROS_DEBUG_NAMED(MPRIM_LOG, "interpolation for arm snap primitive");
     std::vector<RobotState> interp_steps;
     bool interpolate = RobotState::workspaceInterpolate(source_state.robot_pose(), 
                                      successor.robot_pose(),
@@ -71,25 +71,23 @@ bool FullBodySnapMotionPrimitive::computeIntermSteps(const GraphState& source_st
 
     if(!interpolate && !j_interpolate)
     {
-        ROS_WARN("No valid arm interpolation found to snap to full body goal pose");
+        ROS_WARN("No valid arm interpolation found to snap arm to goal pose");
         return false;
     }
 
-    std::vector<ContBaseState> cont_base_states(interp_steps.size());
-    for(size_t i = 0; i < interp_steps.size(); i++)
-      cont_base_states[i] = interp_steps[i].getContBaseState();
-
+    ContBaseState c_base = source_state.robot_pose().getContBaseState();
+    std::vector<ContBaseState> cont_base_states(interp_steps.size(), c_base);
     t_data.cont_base_interm_steps(cont_base_states);
 
     return true;
 }
 
-void FullBodySnapMotionPrimitive::print() const {
+void ArmSnapMotionPrimitive::print() const {
     ROS_DEBUG_NAMED(MPRIM_LOG, 
-                    "FullBodySnapMotionPrimitive cost %d", cost());
+                    "ArmSnapMotionPrimitive cost %d", cost());
 }
 
-void FullBodySnapMotionPrimitive::computeCost(const MotionPrimitiveParams& params){
+void ArmSnapMotionPrimitive::computeCost(const MotionPrimitiveParams& params){
     //TODO: Calculate actual cost 
-    m_cost = 2;
+    m_cost = 1;
 }

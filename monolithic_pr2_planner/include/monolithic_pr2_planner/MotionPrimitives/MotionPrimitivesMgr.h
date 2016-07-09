@@ -10,6 +10,8 @@
 #include <monolithic_pr2_planner/MotionPrimitives/BaseMotionPrimitive.h>
 #include <monolithic_pr2_planner/MotionPrimitives/TorsoMotionPrimitive.h>
 #include <monolithic_pr2_planner/MotionPrimitives/FullBodySnapMotionPrimitive.h>
+#include <monolithic_pr2_planner/MotionPrimitives/ArmSnapMotionPrimitive.h>
+#include <monolithic_pr2_planner/MotionPrimitives/BaseSnapMotionPrimitive.h>
 #include <monolithic_pr2_planner/StateReps/GoalState.h>
 #include <monolithic_pr2_planner/StateReps/GraphState.h>
 
@@ -26,6 +28,8 @@ namespace monolithic_pr2_planner {
             void getUpdatedGoalandTolerances(GoalStatePtr& goal, double xyz_tol, double roll_tol, double pitch_tol, double yaw_tol)
             {   m_goal = goal;
                 fbs_mprim->getUpdatedGoalandTolerances(m_goal, xyz_tol, roll_tol, pitch_tol, yaw_tol);
+                armsnap_mprim->getUpdatedGoalandTolerances(m_goal, xyz_tol, roll_tol, pitch_tol, yaw_tol);
+                basesnap_mprim->getUpdatedGoalandTolerances(m_goal, xyz_tol, roll_tol, pitch_tol, yaw_tol);
             }
         private:
             void loadBaseOnlyMPrims();
@@ -33,6 +37,8 @@ namespace monolithic_pr2_planner {
             void loadAllMPrims();
             void loadTorsoMPrims();
             void loadFullBodySnapMPrims();
+            void loadArmSnapMPrims();
+            void loadBaseSnapMPrims();
 
             // these are all the possible mprims we have
             std::vector<std::vector<MotionPrimitivePtr> > m_all_mprims;
@@ -48,5 +54,7 @@ namespace monolithic_pr2_planner {
             MotionPrimitiveParams m_params;
             GoalStatePtr m_goal;
             FullBodySnapMotionPrimitivePtr fbs_mprim;
+            ArmSnapMotionPrimitivePtr armsnap_mprim;
+            BaseSnapMotionPrimitivePtr basesnap_mprim;
     };
 }
