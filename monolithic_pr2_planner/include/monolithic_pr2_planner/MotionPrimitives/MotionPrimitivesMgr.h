@@ -12,6 +12,7 @@
 #include <monolithic_pr2_planner/MotionPrimitives/FullBodySnapMotionPrimitive.h>
 #include <monolithic_pr2_planner/MotionPrimitives/ArmSnapMotionPrimitive.h>
 #include <monolithic_pr2_planner/MotionPrimitives/BaseSnapMotionPrimitive.h>
+#include <monolithic_pr2_planner/MotionPrimitives/BaseLongSnapMotionPrimitive.h>
 #include <monolithic_pr2_planner/StateReps/GoalState.h>
 #include <monolithic_pr2_planner/StateReps/GraphState.h>
 
@@ -30,6 +31,7 @@ namespace monolithic_pr2_planner {
                 fbs_mprim->getUpdatedGoalandTolerances(m_goal, xyz_tol, roll_tol, pitch_tol, yaw_tol);
                 armsnap_mprim->getUpdatedGoalandTolerances(m_goal, xyz_tol, roll_tol, pitch_tol, yaw_tol);
                 basesnap_mprim->getUpdatedGoalandTolerances(m_goal, xyz_tol, roll_tol, pitch_tol, yaw_tol);
+                baselongsnap_mprim->getUpdatedGoalandTolerances(m_goal, xyz_tol, roll_tol, pitch_tol, yaw_tol);
             }
         private:
             void loadBaseOnlyMPrims();
@@ -56,5 +58,6 @@ namespace monolithic_pr2_planner {
             FullBodySnapMotionPrimitivePtr fbs_mprim;
             ArmSnapMotionPrimitivePtr armsnap_mprim;
             BaseSnapMotionPrimitivePtr basesnap_mprim;
+            BaseLongSnapMotionPrimitivePtr baselongsnap_mprim;
     };
 }

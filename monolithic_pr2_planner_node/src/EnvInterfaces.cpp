@@ -569,6 +569,7 @@ bool EnvInterfaces::runPPMAPlanner(int planner_type,
  
   printf("\n");
   ROS_INFO("Initialize environment");
+  
   m_mon_env->reset();
   m_mon_env->setPlannerType(planner_type);
   //m_mon_env->setUseNewHeuristics(use_new_heuristics);
@@ -577,20 +578,9 @@ bool EnvInterfaces::runPPMAPlanner(int planner_type,
 
 
   m_rrt.reset(new OMPLPR2Planner(m_mon_env->getCollisionSpace(), RRT_NUM));
-  // ompl::base::SpaceInformationPtr si(new ompl::base::SpaceInformation(*m_rrt->GetSpaceInformationPtr()));
   ompl::base::SpaceInformationPtr si = m_rrt->GetSpaceInformationPtr();
 
-  // LeftContArmState left_arm_goal = search_request->left_arm_goal;
-  // RightContArmState right_arm_goal = search_request->right_arm_goal;
-  // ContBaseState base_goal = search_request->base_goal;
-
-  // std::vector<double> l_arm, r_arm;
-  // right_arm_goal.getAngles(&r_arm);
-  // left_arm_goal.getAngles(&l_arm);
-  // BodyPose bp = base_goal.body_pose();
-
-  // Visualizer::pviz->visualizeRobot(r_arm, l_arm, bp, 150, "robot", 0);
-  // getchar();
+  m_mon_env->setSpaceInformation(si);
 
   ompl::base::ProblemDefinitionPtr pdef(new ompl::base::ProblemDefinition(si));
   pathSimplifier = new ompl::geometric::PathSimplifier(si);
@@ -694,6 +684,8 @@ bool EnvInterfaces::runPPMAPlanner(int planner_type,
         ompl::base::PathPtr path = m_ppma_planner->getProblemDefinition()->getSolutionPath();
         data.planned = true;
         
+        ROS_INFO("Begin shortcutting.");
+
         ompl::geometric::PathGeometric geo_path = static_cast<ompl::geometric::PathGeometric&>(*path);
         
         double t2 = ros::Time::now().toSec();
@@ -703,7 +695,8 @@ bool EnvInterfaces::runPPMAPlanner(int planner_type,
         
         //geo_path.interpolate();
         //ROS_ERROR("shortcut:%d\n",b3);
-        
+        ROS_INFO("End shortcutting.");
+
         double t3 = ros::Time::now().toSec();
         double reduction_time = t3-t2;
 
@@ -743,6 +736,8 @@ bool EnvInterfaces::runPPMAPlanner(int planner_type,
         data.shortcut_time = reduction_time;
         vector<RobotState> robot_states;
         vector<ContBaseState> base_states;
+        ROS_INFO("Start interpolation.");
+
         for(unsigned int i = 0; i < geo_path.getStateCount()-1; i++){
 
             ompl::base::State* state = geo_path.getState(i);
@@ -831,6 +826,8 @@ bool EnvInterfaces::runPPMAPlanner(int planner_type,
             //Visualizer::pviz->visualizeRobot(r_arm, l_arm, bp, 150, "robot", 0);
             //usleep(5000);
         }
+        ROS_INFO("End ierpolation.");
+
         data.robot_state = robot_states;
         data.base = base_states;
         data.path_length = robot_states.size();//geo_path.getStateCount();

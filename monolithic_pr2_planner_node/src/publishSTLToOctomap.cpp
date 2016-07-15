@@ -283,6 +283,9 @@ vector<Eigen::Vector3d> getVoxelsFromFile(std::string filename){
     addCuboid(pclCloud, 5, 2.85, 0, 0.05, 2.2, 1.8, true);
     addCuboid(pclCloud, 5, 2.85, 0, 1.00, 0.05, 1.8, true);
 
+    //(Karthik) Extending protrusion
+    addCuboid(pclCloud, 2.8, 4.5, 0.60, 0.05, 0.5, 1.15, true);
+
     // head of doorway; don't add this.
     // addCuboid(pclCloud, 5, 2, 1.6, 0.05, 1, 1.8, true);
 

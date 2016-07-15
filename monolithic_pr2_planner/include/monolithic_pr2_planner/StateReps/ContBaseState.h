@@ -42,6 +42,9 @@ namespace monolithic_pr2_planner {
             static std::vector<ContBaseState> interpolate(const ContBaseState& start, 
                                                           const ContBaseState& end, 
                                                           int num_steps);
+            static std::vector<ContBaseState> longtheta_interpolate(const ContBaseState& start, 
+                                                          const ContBaseState& end, 
+                                                          int num_steps);
             static double distance(const ContBaseState& start, const ContBaseState& end);
         private:
             std::vector<double> m_pose;

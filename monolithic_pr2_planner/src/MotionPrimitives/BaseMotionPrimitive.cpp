@@ -100,6 +100,8 @@ void BaseMotionPrimitive::computeCost(const MotionPrimitiveParams& params){
     m_cost = ceil(static_cast<double>(METER_TO_MM_MULT)*(max(linear_time, angular_time)));
     //use any additional cost multiplier
     m_cost *= getAdditionalCostMult();
+
+    ROS_INFO("base cost : %d", m_cost);
     assert(m_cost >= 0.0);
 }
 

@@ -13,6 +13,7 @@
 
 #define GOAL_STATE 1
 double METER_TO_MM_MULT = 1000;
+constexpr double kHeuristicDeflation = 1.0;
 
 using namespace monolithic_pr2_planner;
 using namespace boost;
@@ -41,8 +42,6 @@ void EnvironmentMonolithic::reset() {
     m_hash_mgr.reset(new HashManager(&StateID2IndexMapping));
     m_edges.clear();
 
-    //si_ = si;
-
     // Fetch params again, in case they're being modified between calls.
     // m_param_catalog.fetch(m_nodehandle);
 }
@@ -55,6 +54,10 @@ void EnvironmentMonolithic::setPlannerType(int planner_type) {
     m_planner_type = planner_type;
     m_heur_mgr->setPlannerType(planner_type);
     ROS_INFO_NAMED(SEARCH_LOG, "Setting planner type: %d", m_planner_type);
+}
+
+void EnvironmentMonolithic::setSpaceInformation(ompl::base::SpaceInformationPtr si) {
+    si_ = si;
 }
 
 bool EnvironmentMonolithic::configureRequest(SearchRequestParamsPtr search_request_params,
@@ -104,9 +107,6 @@ int EnvironmentMonolithic::GetGoalHeuristic(int heuristic_id, int stateID) {
 
     bool is_near_base = false;
 
-    
-
-
     int endeff_euc = GetEndEffEuclideanHeuristic(stateID);
     bool use_endeff_euc = true;
 
@@ -137,9 +137,9 @@ int EnvironmentMonolithic::GetGoalHeuristic(int heuristic_id, int stateID) {
       switch (heuristic_id) {
         case 0:  // Anchor
           if(!is_near_base)
-            return (*values).at("admissible_base");
+            return static_cast<int>((*values).at("admissible_base"));
           else
-            return std::max( (*values).at("admissible_endeff"), (*values).at("admissible_base") );
+            return static_cast<int>((std::max( (*values).at("admissible_endeff"), (*values).at("admissible_base") )));
         case 1:  // ARA Heur 
           return std::max((*values).at("admissible_endeff"), (*values).at("admissible_base"));
         case 2:  // Base1, Base2 heur
@@ -413,7 +413,7 @@ void EnvironmentMonolithic::GetSuccs(int q_id, int sourceStateID, vector<int>* s
         //************************DEBUG*********************//
 
         //Karthik
-        //expansion_pose.visualize(250/NUM_SMHA_HEUR*q_id);
+        expansion_pose.visualize(250/NUM_SMHA_HEUR*q_id);
         
         // source_state->robot_pose().visualize(250/NUM_SMHA_HEUR*q_id);
         // /m_cspace_mgr->visualizeAttachedObject(expansion_pose, 250/NUM_SMHA_HEUR*q_id);
@@ -468,9 +468,34 @@ void EnvironmentMonolithic::GetSuccs(int q_id, int sourceStateID, vector<int>* s
                 succIDs->push_back(successor->id());
             }
 
-            costs->push_back(mprim->cost());
+            int trans_cost = 0;
+
+            ompl::base::State *cont_source_state = si_->allocState();
+            ompl::base::State *cont_successor = si_->allocState();
+
+            GraphStatePtr interp_succ;
+            vector<RobotState> interp_robot_motions = t_data.interm_robot_steps();
+            vector<ContBaseState> interp_base_motions = t_data.cont_base_interm_steps();
             
-            ROS_DEBUG_NAMED(SEARCH_LOG, "motion succeeded with cost %d", mprim->cost());
+            GetContState(source_state->id(), cont_source_state);
+            for(size_t i = 0; i < interp_robot_motions.size(); i++)
+            {
+              RobotState rs(interp_base_motions[i], interp_robot_motions[i].right_arm(), interp_robot_motions[i].left_arm());
+              //interp_succ.reset(new GraphState(rs));
+              //m_hash_mgr->save(interp_succ);
+
+              GetContState(rs, cont_successor);
+              trans_cost += GetContEdgeCost(cont_source_state, cont_successor);
+
+              GetContState(rs, cont_source_state);
+            }
+            GetContState(successor->id(), cont_successor);
+            trans_cost += GetContEdgeCost(cont_source_state, cont_successor);
+
+            // int trans_cost = mprim->cost();
+            costs->push_back(trans_cost);
+            
+            ROS_DEBUG_NAMED(SEARCH_LOG, "motion succeeded with cost %d", trans_cost);
         } else {
             //successor->robot_pose().visualize();
             ROS_DEBUG_NAMED(SEARCH_LOG, "successor failed collision checking");
@@ -829,6 +854,31 @@ void EnvironmentMonolithic::GetContState(int state_id, ompl::base::State *state)
 
 }
 
+void EnvironmentMonolithic::GetContState(RobotState robot_state, ompl::base::State *state){
+
+  ContBaseState base_state = robot_state.getContBaseState();
+  RightContArmState right_arm_state = robot_state.right_arm();
+  LeftContArmState left_arm_state = robot_state.left_arm();
+  ContObjectState obj_state = robot_state.getObjectStateRelBody();
+
+  ompl::base::CompoundState* s = dynamic_cast<ompl::base::CompoundState*> (state);
+
+  s->as<VectorState>(0)->values[0] = obj_state.x();
+  s->as<VectorState>(0)->values[1] = obj_state.y();
+  s->as<VectorState>(0)->values[2] = obj_state.z();
+  s->as<VectorState>(0)->values[3] = obj_state.roll();
+  s->as<VectorState>(0)->values[4] = obj_state.pitch();
+  s->as<VectorState>(0)->values[5] = obj_state.yaw();
+  s->as<VectorState>(0)->values[6] = right_arm_state.getUpperArmRollAngle();
+  s->as<VectorState>(0)->values[7] = left_arm_state.getUpperArmRollAngle();
+  s->as<VectorState>(0)->values[8] = base_state.z();
+
+  s->as<SE2State>(1)->setX(base_state.x());
+  s->as<SE2State>(1)->setY(base_state.y());
+  s->as<SE2State>(1)->setYaw(angles::normalize_angle(base_state.theta() ) );
+
+}
+
 int EnvironmentMonolithic::GetContStateID(const ompl::base::State* state){
   RobotState robot_state;
   ContBaseState base;
@@ -842,33 +892,44 @@ int EnvironmentMonolithic::GetContStateID(const ompl::base::State* state){
 
 int EnvironmentMonolithic::GetContEdgeCost(const ompl::base::State *parent, const ompl::base::State *child){
 
-    RobotState parent_robot_state, child_robot_state;
-    ContBaseState parent_base, child_base;
+    // RobotState parent_robot_state, child_robot_state;
+    // ContBaseState parent_base, child_base;
     
-    if (!convertFullState(parent, parent_robot_state, parent_base)) {
-      //ROS_ERROR("[GetContedgecost]ik failed for parent!");
-    }
+    // if (!convertFullState(parent, parent_robot_state, parent_base)) {
+    //   //ROS_ERROR("[GetContedgecost]ik failed for parent!");
+    // }
 
-    if (!convertFullState(child, child_robot_state, child_base)) {
-      //ROS_ERROR("[GetContedgecost]ik failed for child!");
-    }
+    // if (!convertFullState(child, child_robot_state, child_base)) {
+    //   //ROS_ERROR("[GetContedgecost]ik failed for child!");
+    // }
 
-    double dx = parent_base.x() - child_base.x();
-    double dy = parent_base.y()-child_base.y();
-    double linear_distance = sqrt(dx*dx + dy*dy);
-    double linear_time = linear_distance/static_cast<double>(m_param_catalog.m_motion_primitive_params.nominal_vel);
-    double first_angle = parent_base.theta();
-    double final_angle = child_base.theta();
-    double angular_distance = fabs(shortest_angular_distance(first_angle, 
-                                                             final_angle));
-    double angular_time = angular_distance/static_cast<double>(m_param_catalog.m_motion_primitive_params.angular_vel);
+    // double dx = parent_base.x() - child_base.x();
+    // double dy = parent_base.y()-child_base.y();
+    // double linear_distance = sqrt(dx*dx + dy*dy);
+    // double linear_time = linear_distance/static_cast<double>(m_param_catalog.m_motion_primitive_params.nominal_vel);
+    // double first_angle = parent_base.theta();
+    // double final_angle = child_base.theta();
+    // double angular_distance = fabs(shortest_angular_distance(first_angle, 
+    //                                                          final_angle));
+    // double angular_time = angular_distance/static_cast<double>(m_param_catalog.m_motion_primitive_params.angular_vel);
 
-    //make the cost the max of the two times
-    int cost = ceil(static_cast<double>(METER_TO_MM_MULT)*(max(linear_time, angular_time)));
-    //use any additional cost multiplier
-    cost *= getAdditionalCostMult();
+    // //make the cost the max of the two times
+    // int cost = ceil(static_cast<double>(METER_TO_MM_MULT)*(max(linear_time, angular_time)));
+    // //use any additional cost multiplier
+    // cost *= getAdditionalCostMult();
     
+    // return cost;
+
+    //(Karthik) Changing the objective to match OMPL
+    int cost = static_cast<int>(1000*si_->distance(parent, child));
+
     return cost;
+  
+}
+
+double EnvironmentMonolithic::sqrdiff(double val1, double val2)
+{
+  return (val1 - val2)*(val1 - val2);
 }
 
 void EnvironmentMonolithic::VisualizeContState(const ompl::base::State *child, const ompl::base::State *parent, bool is_discrete, bool is_path)

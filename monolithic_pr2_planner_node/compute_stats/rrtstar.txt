@@ -1,2 +1,2 @@
-rrtstar & 1.110 & 1.079 & 7.877 & 69.0\\
-hstar & 1.000 & 1.000 & 1.000 & 69.0\\
+rrtstar & NaN & NaN & NaN & 0.0\\
+hstar & NaN & NaN & NaN & 90.8\\

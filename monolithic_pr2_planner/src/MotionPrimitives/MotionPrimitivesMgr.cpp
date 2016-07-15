@@ -6,7 +6,7 @@ using namespace monolithic_pr2_planner;
 using namespace std;
 using namespace boost;
 
-MotionPrimitivesMgr::MotionPrimitivesMgr(GoalStatePtr& goal) : m_all_mprims(8){m_goal = goal;}
+MotionPrimitivesMgr::MotionPrimitivesMgr(GoalStatePtr& goal) : m_all_mprims(9){m_goal = goal;}
 
 /*! \brief loads all mprims from configuration. also sets up amps. note that
  * these are not necessarily the exact mprims used during search, because
@@ -27,8 +27,8 @@ bool MotionPrimitivesMgr::loadMPrims(const MotionPrimitiveParams& params){
 
     MPrimList arm_amps;
     arm_amps.push_back(armAMP);
-    arm_amps.push_back(tuckAMP);
-    arm_amps.push_back(untuckAMP);
+    //arm_amps.push_back(tuckAMP);
+    //arm_amps.push_back(untuckAMP);
 
     MPrimList base_amps;
     int NEG_TURN = -1;
@@ -58,6 +58,10 @@ bool MotionPrimitivesMgr::loadMPrims(const MotionPrimitiveParams& params){
     basesnap_mprim = make_shared<BaseSnapMotionPrimitive>();
     base_snap_mprims.push_back(basesnap_mprim);
 
+    MPrimList base_longsnap_mprims;
+    baselongsnap_mprim = make_shared<BaseLongSnapMotionPrimitive>();
+    base_longsnap_mprims.push_back(baselongsnap_mprim);
+
     m_all_mprims[MPrim_Types::ARM] = arm_mprims;
     m_all_mprims[MPrim_Types::BASE] = base_mprims;
     m_all_mprims[MPrim_Types::TORSO] = torso_mprims;
@@ -66,6 +70,7 @@ bool MotionPrimitivesMgr::loadMPrims(const MotionPrimitiveParams& params){
     m_all_mprims[MPrim_Types::FULLBODY_SNAP] = fullbody_snap_mprims;
     m_all_mprims[MPrim_Types::ARM_SNAP] = arm_snap_mprims;
     m_all_mprims[MPrim_Types::BASE_SNAP] = base_snap_mprims;
+    m_all_mprims[MPrim_Types::BASE_LONGSNAP] = base_longsnap_mprims;
 
     computeAllMPrimCosts(m_all_mprims);
 
@@ -130,6 +135,7 @@ void MotionPrimitivesMgr::loadArmSnapMPrims(){
 
 void MotionPrimitivesMgr::loadBaseSnapMPrims(){
     combineVectors(m_all_mprims[MPrim_Types::BASE_SNAP], m_active_mprims);
+    combineVectors(m_all_mprims[MPrim_Types::BASE_LONGSNAP], m_active_mprims);
 }
 
 void MotionPrimitivesMgr::loadAllMPrims(){

@@ -5,6 +5,7 @@
 #include <monolithic_pr2_planner/StateReps/RobotState.h>
 #include <monolithic_pr2_planner/StateReps/ContArmState.h>
 #include <monolithic_pr2_planner/StateReps/ContBaseState.h>
+#include <monolithic_pr2_planner/StateReps/RealVectorWeightedStateSpace.h>
 
 #include <ompl/base/SpaceInformation.h>
 #include <ompl/base/StateSpace.h>
@@ -22,7 +23,7 @@
 using namespace monolithic_pr2_planner;
 using namespace std;
 
-typedef ompl::base::RealVectorStateSpace::StateType VectorState;
+typedef ompl::base::RealVectorWeightedStateSpace::StateType VectorState;
 typedef ompl::base::SE2StateSpace::StateType SE2State;
 typedef ompl::base::ScopedState<ompl::base::CompoundStateSpace> FullState;
 

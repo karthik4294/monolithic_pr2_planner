@@ -1,4 +1,5 @@
 <launch>
+  <!--This one is for the full occupancy grid-->
   <node name="octomap_server" pkg="octomap_server" type="octomap_server_node">
     <param name="resolution" value="0.02" />
     <param name="sensor_model/range" value="4.0" />
@@ -20,6 +21,34 @@
     <param name="occupancy_max_z" value="2.0"/>
     <param name="base_frame_id" value="map" />
     <remap from="cloud_in" to="pcl_environment" />
+    <remap from="projected_map" to="projected_map_full_pointcloud" />
+
+  </node>
+
+  <!--This one is for the 2D costmap for base, taking only points upto
+       base-height-->
+  <node name="octomap_server_base" pkg="octomap_server" type="octomap_server_node">
+    <param name="resolution" value="0.02" />
+    <param name="sensor_model/range" value="4.0" />
+
+    <param name="sensor_model/hit" value= "0.8" />
+    <param name="sensor_model/miss" value= "0.31" />
+    <param name="sensor_model/min" value= "0.12" />
+    <param name="sensor_model/max" value= "0.95" />
+
+    <param name="min_z_range" value="0.05" />
+    <param name="max_z_range" value="1.8" />
+    <param name="min_x_size" value="25.0" />
+    <param name="min_y_size" value="25.0" />
+
+    <param name="pointcloud_min_z" value="0.10"/>
+    <param name="pointcloud_max_z" value="0.20"/> <!--1.80-->
+    <param name="filter_ground" value="true"/>
+    <param name="occupancy_min_z" value="0.05"/>
+    <param name="occupancy_max_z" value="2.0"/>
+    <param name="base_frame_id" value="map" />
+    <remap from="cloud_in" to="pcl_environment" />
+    <remap from="octomap_point_cloud_centers" to="octomap_point_cloud_centers_base" />
 
   </node>
 
@@ -41,6 +70,13 @@
       <param name="planner/base_motion_primitive_file" value="$(find monolithic_pr2_planner)/config/full_body_base.mprim" />
       <param name="planner/left_arm_description_file" value="$(find monolithic_pr2_planner)/config/pr2_left_arm.cfg" />
       <param name="planner/right_arm_description_file" value="$(find monolithic_pr2_planner)/config/pr2_right_arm.cfg" />
+      <param name="planner/nominalvel_mpersecs" value="1.0"/>
+      <param name="planner/timetoturn45degsinplace_secs" value="0.5"/>
+      <param name="planner/right_arm_description_file" value="$(find monolithic_pr2_planner)/config/pr2_right_arm.cfg" />
+      <param name="base_linear_weight" value="1"/>
+      <param name="base_angular_weight" value="0.5"/>	
+      <param name="object_linear_weight" value="1"/>
+      <param name="object_angular_weight" value="0.5"/>	
       <rosparam file="$(find monolithic_pr2_planner)/config/costmap_2d.yaml" command="load" ns="costmap_2d" />
   </node>
   

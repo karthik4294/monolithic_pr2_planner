@@ -27,9 +27,23 @@ ompl::base::OptimizationObjectivePtr getThresholdPathLengthObj(const ompl::base:
 }
 
 OMPLPR2Planner::OMPLPR2Planner(const CSpaceMgrPtr& cspace, int planner_id):
-    m_planner_id(planner_id){
+    m_planner_id(planner_id), ph_("~"){
     //create the StateSpace (defines the dimensions and their bounds)
     ROS_INFO("initializing OMPL");
+
+    ph_.param<double>("base_linear_weight", base_lin_weight_, 1);
+    ph_.param<double>("base_angular_weight", base_ang_weight_, 0.5);
+    ph_.param<double>("object_linear_weight", obj_lin_weight_, 1);
+    ph_.param<double>("object_angular_weight", obj_ang_weight_, 0.5);
+
+    std::vector<double> se2_wts(2,0);
+    se2_wts[0] = base_lin_weight_;
+    se2_wts[1] = base_ang_weight_;
+
+    std::vector<double> r_wts(2,0);
+    r_wts[0] = obj_lin_weight_;
+    r_wts[1] = obj_ang_weight_;
+
     ompl::base::SE2StateSpace* se2 = new ompl::base::SE2StateSpace();
     ompl::base::RealVectorBounds base_bounds(2);
     base_bounds.setLow(0,0);
@@ -37,7 +51,11 @@ OMPLPR2Planner::OMPLPR2Planner(const CSpaceMgrPtr& cspace, int planner_id):
     base_bounds.setLow(1,0);
     base_bounds.setHigh(1,6);//3
     se2->setBounds(base_bounds);
-    ompl::base::RealVectorStateSpace* r7 = new ompl::base::RealVectorStateSpace(9);
+
+    for(int i = 0; i < se2->getSubspaceCount() ;i++)
+        se2->setSubspaceWeight(i, se2_wts[i]);
+    
+    ompl::base::RealVectorWeightedStateSpace* r7 = new ompl::base::RealVectorWeightedStateSpace(9, r_wts);
     r7->setDimensionName(0,"arms_x");
     r7->setDimensionName(1,"arms_y");
     r7->setDimensionName(2,"arms_z");
@@ -73,7 +91,9 @@ OMPLPR2Planner::OMPLPR2Planner(const CSpaceMgrPtr& cspace, int planner_id):
     ompl::base::StateSpacePtr se2_p(se2);
     ompl::base::StateSpacePtr r7_p(r7);
     fullBodySpace = r7_p + se2_p;
-    
+
+    fullBodySpace->printSettings(std::cout);
+
     //Define our SpaceInformation (combines the state space and collision checker)
     ompl::base::SpaceInformationPtr si(new ompl::base::SpaceInformation(fullBodySpace));
     m_si = si;

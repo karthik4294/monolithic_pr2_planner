@@ -1,10 +1,10 @@
-#include <monolithic_pr2_planner/MotionPrimitives/BaseSnapMotionPrimitive.h>
+#include <monolithic_pr2_planner/MotionPrimitives/BaseLongSnapMotionPrimitive.h>
 #include <monolithic_pr2_planner/LoggerNames.h>
 #include <boost/shared_ptr.hpp>
 
 using namespace monolithic_pr2_planner;
 
-bool BaseSnapMotionPrimitive::apply(const GraphState& source_state, 
+bool BaseLongSnapMotionPrimitive::apply(const GraphState& source_state, 
                            GraphStatePtr& successor,
                            TransitionData& t_data){
 
@@ -40,7 +40,7 @@ bool BaseSnapMotionPrimitive::apply(const GraphState& source_state,
       // modified_base.theta( m_goal->getRobotState().getContBaseState().theta());   
       // RobotState rs(modified_base, source_state.robot_pose().right_arm(), source_state.robot_pose().left_arm());
       // successor.reset(new GraphState(rs));
-
+      
       RobotState rs(m_goal->getRobotState().getContBaseState(), source_state.robot_pose().right_arm(), source_state.robot_pose().left_arm());
       successor.reset(new GraphState(rs));
 
@@ -54,7 +54,7 @@ bool BaseSnapMotionPrimitive::apply(const GraphState& source_state,
     } 
 }
 
-bool BaseSnapMotionPrimitive::computeIntermSteps(const GraphState& source_state, 
+bool BaseLongSnapMotionPrimitive::computeIntermSteps(const GraphState& source_state, 
                         const GraphState& successor, 
                         TransitionData& t_data){
 
@@ -66,7 +66,7 @@ bool BaseSnapMotionPrimitive::computeIntermSteps(const GraphState& source_state,
 
     int num_interp_steps = numInterpSteps(source_state.robot_pose(), successor.robot_pose());
 
-    interp_base_steps = ContBaseState::interpolate(start_base, end_base, 
+    interp_base_steps = ContBaseState::longtheta_interpolate(start_base, end_base, 
                                                      num_interp_steps);
 
     t_data.cont_base_interm_steps(interp_base_steps);
@@ -77,17 +77,17 @@ bool BaseSnapMotionPrimitive::computeIntermSteps(const GraphState& source_state,
     return true;
 }
 
-void BaseSnapMotionPrimitive::print() const {
+void BaseLongSnapMotionPrimitive::print() const {
     ROS_DEBUG_NAMED(MPRIM_LOG, 
-                    "BaseSnapMotionPrimitive cost %d", cost());
+                    "BaseLongSnapMotionPrimitive cost %d", cost());
 }
 
-void BaseSnapMotionPrimitive::computeCost(const MotionPrimitiveParams& params){
+void BaseLongSnapMotionPrimitive::computeCost(const MotionPrimitiveParams& params){
     //TODO: Calculate actual cost 
     m_cost = 1;
 }
 
-int BaseSnapMotionPrimitive::numInterpSteps(const RobotState& start, const RobotState& end){
+int BaseLongSnapMotionPrimitive::numInterpSteps(const RobotState& start, const RobotState& end){
 
     ContBaseState start_base = start.base_state();
     ContBaseState end_base = end.base_state();

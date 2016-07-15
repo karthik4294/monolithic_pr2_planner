@@ -71,6 +71,35 @@ vector<ContBaseState> ContBaseState::interpolate(const ContBaseState& start,
     return interp_steps;
 }
 
+// returns <num_steps> number of interpolated points, with the start and end
+// included in this count. That's why we subtract 1 from the input number.
+// We use the longer theta for the base
+vector<ContBaseState> ContBaseState::longtheta_interpolate(const ContBaseState& start, 
+                                                 const ContBaseState& end,
+                                                 int num_steps){
+    vector<ContBaseState> interp_steps;
+    if (num_steps < 2){
+        interp_steps.push_back(start);
+        interp_steps.push_back(end);
+        return interp_steps;
+    }
+    num_steps--;
+    double dX = end.x() - start.x();
+    double dY = end.y() - start.y();
+    double dZ = end.z() - start.z();
+    double dTheta = 2*M_PI - angles::shortest_angular_distance(start.theta(), end.theta());
+    double step_mult = 1/static_cast<double>(num_steps);
+
+    for (int i=0; i <= num_steps; i++){
+        ContBaseState state(start.x() + i*dX*step_mult,
+                            start.y() + i*dY*step_mult,
+                            start.z() + i*dZ*step_mult,
+                            start.theta() + i*dTheta*step_mult);
+        interp_steps.push_back(state);
+    }
+    return interp_steps;
+}
+
 double ContBaseState::distance(const ContBaseState& start, const ContBaseState& end){
     double dX = end.x() - start.x();
     double dY = end.y() - start.y();

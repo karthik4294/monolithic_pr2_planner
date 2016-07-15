@@ -13,6 +13,7 @@
 #include <vector>
 #include <memory>
 #include <pviz/pviz.h>
+#include <monolithic_pr2_planner/StateReps/RealVectorWeightedStateSpace.h>
 
 //OMPL headers
 #include <ompl/base/SpaceInformation.h>
@@ -30,7 +31,7 @@
 #include <ompl/base/objectives/PathLengthOptimizationObjective.h>
 #include <ompl/base/Cost.h>
 
-typedef ompl::base::RealVectorStateSpace::StateType VectorState;
+typedef ompl::base::RealVectorWeightedStateSpace::StateType VectorState;
 typedef ompl::base::SE2StateSpace::StateType SE2State;
 typedef ompl::base::ScopedState<ompl::base::CompoundStateSpace> FullState;
 
@@ -66,8 +67,10 @@ namespace monolithic_pr2_planner {
                 state_ids);
             void reset();
             void setPlannerType(int planner_type);
+            void setSpaceInformation(ompl::base::SpaceInformationPtr si);
             void setUseNewHeuristics(bool use_new_heuristics){m_use_new_heuristics = use_new_heuristics;};
             void GetContState(int state_id, ompl::base::State *state);
+            void GetContState(RobotState robot_state, ompl::base::State *state);
             void VisualizeContState(const ompl::base::State *child, const ompl::base::State *parent, bool is_discrete, bool is_path);
             void printContState(const ompl::base::State* state);
 
@@ -83,6 +86,7 @@ namespace monolithic_pr2_planner {
             void GetNearestLatticeState(const ompl::base::State *continuous_state, ompl::base::State* nearest_lattice_state, int *nearest_lattice_state_id);
             int GetContStateID(const ompl::base::State* state); 
             int GetContEdgeCost(const ompl::base::State *parent, const ompl::base::State *child);
+            double sqrdiff(double val1, double val2);
             bool convertFullState(const ompl::base::State* state, RobotState& robot_state, ContBaseState& base);
             bool wInterpolate(ompl::base::State* nstate, ompl::base::State* dstate, double &interp_size);
             bool jInterpolate(ompl::base::State* nstate, ompl::base::State* dstate, double &interp_size);

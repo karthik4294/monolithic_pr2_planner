@@ -127,7 +127,7 @@ bool CollisionSpaceMgr::isValidSuccessor(const GraphState& successor,
     } else if (t_data.motion_type() == MPrim_Types::ARM_SNAP){
         return m_cspace->checkArmsMotion(l_arm, r_arm, body_pose, verbose, dist, debug);
 
-    } else if (t_data.motion_type() == MPrim_Types::BASE_SNAP){
+    } else if (t_data.motion_type() == MPrim_Types::BASE_SNAP || t_data.motion_type() == MPrim_Types::BASE_LONGSNAP){
         return m_cspace->checkBaseMotion(l_arm, r_arm, body_pose, verbose, dist, debug);
 
     }else {
@@ -201,7 +201,7 @@ bool CollisionSpaceMgr::isValidTransitionStates(const TransitionData& t_data){
                 return false;
             }
 
-        } else if (t_data.motion_type() == MPrim_Types::BASE_SNAP){
+        } else if (t_data.motion_type() == MPrim_Types::BASE_SNAP || t_data.motion_type() == MPrim_Types::BASE_LONGSNAP){
             interp_base_motions = t_data.cont_base_interm_steps();
             BodyPose body_pose = interp_base_motions[idx].body_pose();
             if (!m_cspace->checkBaseMotion(l_arm, r_arm, body_pose, verbose, dist, debug)){
