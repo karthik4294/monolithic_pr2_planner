@@ -137,6 +137,5 @@ int main(int argc, char** argv){
     ros::MultiThreadedSpinner spinner(4);//need 4 threads to catch a the interrupt (a thread for each blocking callback + the interrupt)
     spinner.spin();
 
-
     //ros::spin();
 }

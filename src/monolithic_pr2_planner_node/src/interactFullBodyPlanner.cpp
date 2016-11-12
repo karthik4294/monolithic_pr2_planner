@@ -12,6 +12,7 @@ enum MenuItems{PLAN_IMHA_ROUND_ROBIN=1,
                PLAN_SMHA_DTS_PLUS,
                PLAN_SMHA_DTS_FOCAL,
                PLAN_SMHA_DTS_UNCONSTRAINED,
+               PLAN_ARA,
                INTERRUPT,
                WRITE_TO_FILE};
 
@@ -50,7 +51,8 @@ void ControlPlanner::processFeedback(const visualization_msgs::InteractiveMarker
        feedback->menu_entry_id == MenuItems::PLAN_SMHA_DTS ||
        feedback->menu_entry_id == MenuItems::PLAN_SMHA_DTS_PLUS ||
        feedback->menu_entry_id == MenuItems::PLAN_SMHA_DTS_FOCAL ||
-       feedback->menu_entry_id == MenuItems::PLAN_SMHA_DTS_UNCONSTRAINED){
+       feedback->menu_entry_id == MenuItems::PLAN_SMHA_DTS_UNCONSTRAINED || 
+       feedback->menu_entry_id == MenuItems::PLAN_ARA){
 
       visualization_msgs::InteractiveMarker start_base_marker;
       int_marker_server->get("start_base",start_base_marker);
@@ -86,6 +88,8 @@ void ControlPlanner::processFeedback(const visualization_msgs::InteractiveMarker
        feedback->menu_entry_id == MenuItems::PLAN_IMHA_META_A_STAR ||
        feedback->menu_entry_id == MenuItems::PLAN_IMHA_DTS)
       req.planner_type = mha_planner::PlannerType::IMHA;
+    else if(feedback->menu_entry_id == MenuItems::PLAN_ARA)
+      req.planner_type = -1;
     else
       req.planner_type = mha_planner::PlannerType::SMHA;
 
@@ -101,16 +105,13 @@ void ControlPlanner::processFeedback(const visualization_msgs::InteractiveMarker
     else
       req.meta_search_type = mha_planner::MetaSearchType::ROUND_ROBIN;
 
-    // Setting the type of mha plannerr
+    // Setting the type of mha planner
     if(feedback->menu_entry_id == MenuItems::PLAN_SMHA_DTS_PLUS)
         req.mha_type = mha_planner::MHAType::PLUS;
-
     else if(feedback->menu_entry_id == MenuItems::PLAN_SMHA_DTS_FOCAL)
         req.mha_type = mha_planner::MHAType::FOCAL;
-
     else if(feedback->menu_entry_id == MenuItems::PLAN_SMHA_DTS_UNCONSTRAINED)
         req.mha_type = mha_planner::MHAType::UNCONSTRAINED;
-
     else
         req.mha_type = mha_planner::MHAType::ORIGINAL;
 
@@ -641,6 +642,7 @@ ControlPlanner::ControlPlanner(){
   menu_handler.insert("Plan SMHA DTS PLUS", boost::bind(&ControlPlanner::processFeedback, this, _1));
   menu_handler.insert("Plan SMHA DTS FOCAL", boost::bind(&ControlPlanner::processFeedback, this, _1));
   menu_handler.insert("Plan SMHA DTS UNCONSTRAINED", boost::bind(&ControlPlanner::processFeedback, this, _1));
+  menu_handler.insert("Plan ARA", boost::bind(&ControlPlanner::processFeedback, this, _1));
   menu_handler.insert("Interrupt planner", boost::bind(&ControlPlanner::processFeedback, this, _1));
   menu_handler.insert("Write to file", boost::bind(&ControlPlanner::processFeedback, this, _1));
   menu_handler.apply(*int_marker_server, "start_base");

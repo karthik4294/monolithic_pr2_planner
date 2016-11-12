@@ -446,6 +446,127 @@ bool EnvInterfaces::runMHAPlanner(int planner_type,
   }
 }
 
+bool EnvInterfaces::runARAPlanner(int planner_type,
+                                  std::string planner_prefix,
+                                  GetMobileArmPlan::Request &req,
+                                  GetMobileArmPlan::Response &res,
+                                  SearchRequestParamsPtr search_request,
+                                  int counter) {
+  // std::cin.get();
+  int start_id, goal_id;
+  bool return_first_soln = true;
+  bool forward_search = true;
+  clock_t total_planning_time;
+  bool isPlanFound;
+  vector<double> stats;
+  vector<string> stat_names;
+  vector<FullBodyState> states;
+
+  ros::NodeHandle ph("~");
+
+  printf("\n");
+  ROS_INFO("Initialize environment");
+  m_env->reset();
+
+  m_ara_planner.reset(new ARAPlanner(m_env.get(), forward_search));
+  
+  total_planning_time = clock();
+  ROS_INFO("configuring request");
+
+  if (!m_env->configureRequest(search_request, start_id, goal_id)) {
+    ROS_ERROR("Unable to configure request for %s! Trial ID: %d",
+              planner_prefix.c_str(), counter);
+
+    total_planning_time = -1;
+    int soln_cost = -1;
+    packageStats(stat_names, stats, soln_cost, 0, total_planning_time);
+
+    for (unsigned int i = 0; i < stats.size(); i++) {
+      stats[i] = -1;
+    }
+
+    m_stats_writer.writeSBPL(stats, states, counter, planner_prefix);
+    res.stats_field_names = stat_names;
+    res.stats = stats;
+    return true;
+  }
+
+  if (req.use_ompl) {
+    ROS_INFO("rrt init");
+    RobotState::setPlanningMode(PlanningModes::RIGHT_ARM_MOBILE);
+    m_rrt.reset(new OMPLPR2Planner(m_env->getCollisionSpace(), RRT));
+    ROS_INFO("rrt check request");
+
+    if (!m_rrt->checkRequest(*search_request)) {
+      ROS_WARN("bad start goal for ompl");
+    }
+
+    ROS_INFO("rrt plan");
+    m_rrt->setPlanningTime(req.allocated_planning_time);
+    double t0 = ros::Time::now().toSec();
+    bool found_path = m_rrt->planPathCallback(*search_request, counter,
+                                              m_stats_writer);
+    double t1 = ros::Time::now().toSec();
+    ROS_INFO("rrt done planning");
+
+    res.stats_field_names.clear();
+    res.stats_field_names.push_back("total_plan_time");
+    res.stats.clear();
+
+    if (found_path) {
+      res.stats.push_back(t1 - t0);
+    } else {
+      res.stats.push_back(-1.0);
+    }
+
+    sleep(5);
+    return true;
+  } else {
+
+    m_ara_planner->set_start(start_id);
+    ROS_INFO("setting %s goal id to %d", planner_prefix.c_str(), goal_id);
+    m_ara_planner->set_goal(goal_id);
+    m_ara_planner->force_planning_from_scratch();
+    vector<int> soln;
+    int soln_cost;
+    ROS_INFO("allocated time is %f", req.allocated_planning_time);
+    
+    ReplanParams replan_params(req.allocated_planning_time);
+
+    replan_params.return_first_solution = false;
+    replan_params.initial_eps = EPS;
+    replan_params.final_eps = EPS;
+    replan_params.dec_eps = 0.2;
+
+    isPlanFound = m_ara_planner->replan(&soln, replan_params, &soln_cost);
+
+    if (isPlanFound) {
+      ROS_INFO("Plan found in %s Planner. Moving on to reconstruction.",
+               planner_prefix.c_str());
+      states =  m_env->reconstructPath(soln);
+      total_planning_time = clock() - total_planning_time;
+      packageStats(stat_names, stats, soln_cost, states.size(),
+                      total_planning_time);
+      m_stats_writer.writeSBPL(stats, states, counter, planner_prefix);
+      res.stats_field_names = stat_names;
+      res.stats = stats;
+    } else {
+      packageStats(stat_names, stats, soln_cost, states.size(),
+                      total_planning_time);
+      res.stats_field_names = stat_names;
+      res.stats = stats;
+      ROS_INFO("No plan found in %s!", planner_prefix.c_str());
+    }
+
+    if (m_params.run_trajectory) {
+      ROS_INFO("Running trajectory!");
+      //runTrajectory(states); Commented out to compile without driver.
+    }
+
+    return true;
+  }
+}
+
 bool EnvInterfaces::planPathCallback(GetMobileArmPlan::Request &req,
                                      GetMobileArmPlan::Response &res) {
   boost::unique_lock<boost::mutex> lock(mutex);
@@ -497,8 +618,17 @@ bool EnvInterfaces::planPathCallback(GetMobileArmPlan::Request &req,
 
   double total_planning_time = clock();
   bool forward_search = true;
-  isPlanFound = runMHAPlanner(monolithic_pr2_planner::T_SMHA, "smha_", req, res,
+  
+  if(req.planner_type != -1)
+  {
+    isPlanFound = runMHAPlanner(monolithic_pr2_planner::T_SMHA, "smha_", req, res,
+                                search_request, counter);
+  }
+  else{
+    isPlanFound = runARAPlanner(monolithic_pr2_planner::T_ARA, "ara_", req, res,
                               search_request, counter);
+  }
+
   counter++;
   return true;
 }
@@ -590,7 +720,7 @@ void EnvInterfaces::packageStats(vector<string> &stat_names,
   // TODO fix the total planning time
   //stats[0] = totalPlanTime;
   // TODO: Venkat. Handle the inital/final solution eps correctly when this becomes anytime someday.
-  /*
+  
   stats[0] = total_planning_time/static_cast<double>(CLOCKS_PER_SEC);
   stats[1] = m_ara_planner->get_initial_eps_planning_time();
   stats[2] = m_ara_planner->get_initial_eps();
@@ -601,20 +731,7 @@ void EnvInterfaces::packageStats(vector<string> &stat_names,
   stats[7] = m_ara_planner->get_n_expands();
   stats[8] = static_cast<double>(solution_cost);
   stats[9] = static_cast<double>(solution_size);
-  */
-  vector<PlannerStats> planner_stats;
-  m_mha_planner->get_search_stats(&planner_stats);
-  // Take stats only for the first solution, since this is not anytime currently
-  stats[0] = planner_stats[0].time;
-  stats[1] = stats[0];
-  stats[2] = EPS;
-  stats[3] = planner_stats[0].expands;
-  stats[4] = stats[0];
-  stats[5] = stats[2];
-  stats[6] = stats[2];
-  stats[7] = stats[3];
-  stats[8] = static_cast<double>(planner_stats[0].cost);
-  stats[9] = static_cast<double>(solution_size);
+  
 }
 
 void EnvInterfaces::packageMHAStats(vector<string> &stat_names,

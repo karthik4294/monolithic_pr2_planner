@@ -74,6 +74,12 @@ namespace monolithic_pr2_planner_node {
                   GetMobileArmPlan::Response &res,
                   monolithic_pr2_planner::SearchRequestParamsPtr search_request,
                   int counter);
+            bool runARAPlanner(int planner_type,
+                  std::string planner_prefix,
+                  GetMobileArmPlan::Request &req,
+                  GetMobileArmPlan::Response &res,
+                  monolithic_pr2_planner::SearchRequestParamsPtr search_request,
+                  int counter);
             void getRobotState(tf::TransformListener &tf_, BodyPose &body_pos, std::vector<double> &rangles, std::vector<double>
               &langles);
             double getJointAngle(std::string name, sensor_msgs::JointStateConstPtr
