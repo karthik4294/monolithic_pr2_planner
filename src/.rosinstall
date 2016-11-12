@@ -11,10 +11,6 @@
     uri: https://github.com/shivamvats/leatherman
     version: indigo
 - git:
-    local-name: monolithic_pr2_planner
-    uri: https://github.com/shivamvats/monolithic_pr2_planner
-    version: indigo
-- git:
     local-name: navigation
     uri: https://github.com/shivamvats/navigation
     version: indigo
