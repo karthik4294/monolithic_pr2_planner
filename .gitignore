@@ -16,4 +16,5 @@ install/*
 stats/*
 !.gitignore
 .catkin_workspace
-.csv
+mha_stats.csv
+fbp_tests.yaml
