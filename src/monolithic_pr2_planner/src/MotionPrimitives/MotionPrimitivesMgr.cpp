@@ -91,7 +91,7 @@ void MotionPrimitivesMgr::combineVectors(const MPrimList& v1, MPrimList& v2){
 
 void MotionPrimitivesMgr::loadBaseOnlyMPrims(){
     combineVectors(m_all_mprims[MPrim_Types::BASE], m_active_mprims);
-    combineVectors(m_all_mprims[MPrim_Types::BASE_ADAPTIVE], m_active_mprims);
+    // combineVectors(m_all_mprims[MPrim_Types::BASE_ADAPTIVE], m_active_mprims);
 }
 
 void MotionPrimitivesMgr::loadTorsoMPrims(){
@@ -102,7 +102,7 @@ void MotionPrimitivesMgr::loadTorsoMPrims(){
 // are in cartesian space
 void MotionPrimitivesMgr::loadArmOnlyMPrims(){
     combineVectors(m_all_mprims[MPrim_Types::ARM], m_active_mprims);
-    combineVectors(m_all_mprims[MPrim_Types::ARM_ADAPTIVE], m_active_mprims);
+    // combineVectors(m_all_mprims[MPrim_Types::ARM_ADAPTIVE], m_active_mprims);
 }
 
 void MotionPrimitivesMgr::loadAllMPrims(){
