@@ -12,16 +12,19 @@
 #include <cassert>
 
 #define GOAL_STATE 1
+#define START_STATE 0
 using namespace monolithic_pr2_planner;
 using namespace boost;
 
 // stateid2mapping pointer inherited from sbpl interface. needed for planner.
-Environment::Environment(ros::NodeHandle nh)
+Environment::Environment(ros::NodeHandle nh, bool learn_phase)
     :   m_hash_mgr(new HashManager(&StateID2IndexMapping)),
         m_nodehandle(nh), m_mprims(m_goal),
         m_heur_mgr(new HeuristicMgr()),
         m_using_lazy(false),
-        m_planner_type(T_SMHA) {
+        m_planner_type(T_SMHA),
+        m_min_heur(INFINITECOST),
+        m_learn_phase(learn_phase){
         m_param_catalog.fetch(nh);
         configurePlanningDomain();
 }
@@ -333,6 +336,27 @@ void Environment::GetSuccs(int q_id, int sourceStateID, vector<int>* succIDs,
     ROS_DEBUG_NAMED(SEARCH_LOG, 
             "==================Expanding state %d==================", 
                     sourceStateID);
+
+    // Set minimum to infinity when expanding start state
+    if(sourceStateID == START_STATE){
+      m_min_heur = INFINITECOST;
+    }
+
+    if(m_learn_phase){
+      /**
+      Keep track of the minimum heuristic so as to 
+      declare local minima
+      **/
+      int heur = GetGoalHeuristic(sourceStateID);
+      if(heur < m_min_heur){
+        m_min_heur = heur;
+        ROS_INFO("Heuristic of expanding state %d", heur);
+      }
+      else{
+        ROS_WARN("Search at a Local minima heur is %d but minimum is %d", heur, m_min_heur);
+      }
+    }
+
     succIDs->clear();
     succIDs->reserve(m_mprims.getMotionPrims().size());
     costs->clear();

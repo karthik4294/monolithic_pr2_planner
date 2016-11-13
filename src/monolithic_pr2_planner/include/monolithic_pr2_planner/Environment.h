@@ -17,6 +17,9 @@
 #define NUM_IMHA_HEUR 4 // Used in EnvInterfaces to initialize the planner.
 // This should include the Anchor search -> Total number of searches.
 
+#define INFINITECOST 1000000000
+
+
 namespace monolithic_pr2_planner {
     /*! \brief Implements a complete environment used by the SBPL planner.
      * Contains everything from managing state IDs to collision space
@@ -25,7 +28,7 @@ namespace monolithic_pr2_planner {
     typedef std::pair<int, int> Edge;
     class Environment : public EnvironmentMHA {
         public:
-            Environment(ros::NodeHandle nh);
+            Environment(ros::NodeHandle nh, bool learn_phase = false);
             CSpaceMgrPtr getCollisionSpace(){ return m_cspace_mgr; };
             HeuristicMgrPtr getHeuristicMgr(){ return m_heur_mgr; };
             bool configureRequest(SearchRequestParamsPtr search_request_params,
@@ -66,6 +69,9 @@ namespace monolithic_pr2_planner {
 
             int m_planner_type;
             bool m_use_new_heuristics;
+
+            int m_min_heur;
+            bool m_learn_phase;
 
         // SBPL interface stuff
         public:
