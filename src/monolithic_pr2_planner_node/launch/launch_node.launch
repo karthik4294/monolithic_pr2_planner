@@ -21,8 +21,37 @@
     <param name="occupancy_max_z" value="2.0"/>
     <param name="base_frame_id" value="map" />
     <remap from="cloud_in" to="pcl_environment" />
+    <remap from="projected_map" to="projected_map_full_pointcloud" />
 
   </node>
+
+  <!--This one is for the 2D costmap for base, taking only points upto
+      base-height-->
+  <node name="octomap_server_base" pkg="octomap_server" type="octomap_server_node">
+    <param name="resolution" value="0.02" />
+    <param name="sensor_model/range" value="4.0" />
+
+    <param name="sensor_model/hit" value= "0.8" />
+    <param name="sensor_model/miss" value= "0.31" />
+    <param name="sensor_model/min" value= "0.12" />
+    <param name="sensor_model/max" value= "0.95" />
+
+    <param name="min_z_range" value="0.05" />
+    <param name="max_z_range" value="0.2" />
+    <param name="min_x_size" value="25.0" />
+    <param name="min_y_size" value="25.0" />
+
+    <param name="pointcloud_min_z" value="0.10"/>
+    <param name="pointcloud_max_z" value="0.20"/>
+    <param name="filter_ground" value="true"/>
+    <param name="occupancy_min_z" value="0.05"/>
+    <param name="occupancy_max_z" value="2.0"/>
+    <param name="base_frame_id" value="map" />
+    <remap from="cloud_in" to="pcl_environment" />
+    <remap from="octomap_point_cloud_centers" to="octomap_point_cloud_centers_base" />
+
+  </node>
+
   <node pkg="monolithic_pr2_planner_node" type="stlToOctomap" name="stlToOctomap" args="package://monolithic_pr2_planner_node/maps/max_kitchen.dae">
     <param name="addTableObstacles" value="false"/>
   </node>
