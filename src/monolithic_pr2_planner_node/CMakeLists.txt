@@ -73,8 +73,16 @@ add_executable(node src/node.cpp src/EnvInterfaces.cpp #(Not required for simula
                              src/ompl_collision_checker.cpp
                         )
 
+add_executable(policy_learner src/learn_policy.cpp src/EnvInterfaces.cpp #(Not required for simulation?)
+                             src/CollisionSpaceInterface.cpp
+                             src/ompl_pr2_planner.cpp
+                             src/ompl_collision_checker.cpp
+                        )
+
 # TODO I don't know why I have to list the packages explicitly.
 target_link_libraries(node monolithic_pr2_planner ${tf2_LIBRARIES} bfs3d ompl ikfast_pr2 sbpl_manipulation_components_pr2 pviz ompl pr2_collision_checker ${catkin_LIBRARIES} ${ompl_LIBRARIES} ${orocos_kdl_LIBRARIES})
+
+target_link_libraries(policy_learner monolithic_pr2_planner ${tf2_LIBRARIES} bfs3d ompl ikfast_pr2 sbpl_manipulation_components_pr2 pviz ompl pr2_collision_checker ${catkin_LIBRARIES} ${ompl_LIBRARIES} ${orocos_kdl_LIBRARIES})
 
 add_executable(testPlanningRequest src/testPlanningRequest.cpp)
 target_link_libraries(testPlanningRequest monolithic_pr2_planner)
