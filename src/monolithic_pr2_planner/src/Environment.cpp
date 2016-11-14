@@ -324,6 +324,97 @@ int Environment::GetGoalHeuristic(int heuristic_id, int stateID) {
     return std::max((*values).at("admissible_base"), (*values).at("admissible_endeff"));
 }
 
+void Environment::LearnPolicy(int sourceStateID){
+
+    ROS_INFO("Starting policy gradient");
+
+    int end_heur = m_min_heur;
+
+    std::default_random_engine generator; 
+    int parent_heur, succ_heur;
+
+    int episode = 0;
+
+    while(episode < 100)
+    {    
+      int t =0;
+
+      int parent_id = sourceStateID;
+
+      std::vector<int> theta((m_mprims.getMotionPrims()).size(), 1);
+      std::vector<int> del_theta((m_mprims.getMotionPrims()).size(), 0);
+    
+      std::vector<std::vector<GraphStatePtr>> traj(100);
+      std::vector<std::vector<int>> reward(100);
+      std::vector<int> cum_reward;
+      std::vector<int> chosen_action;
+
+      std::discrete_distribution<int> distribution(theta.begin(), theta.end());
+
+      while(t < 10000){
+
+        int num = distribution(generator);
+
+        auto mprim = (m_mprims.getMotionPrims()).at(num);
+
+        GraphStatePtr source_state = m_hash_mgr->getGraphState(parent_id);
+        GraphStatePtr successor;
+        TransitionData t_data;
+        if (!mprim->apply(*source_state, successor, t_data)) {
+            ROS_WARN("Couldn't apply action");
+            continue;
+        }
+
+        if (m_cspace_mgr->isValidSuccessor(*successor,t_data) &&
+            m_cspace_mgr->isValidTransitionStates(t_data)){
+
+            m_hash_mgr->save(successor);
+
+            ROS_INFO("Motion succeeded");
+        } else {
+            //successor->robot_pose().visualize();
+            ROS_WARN("Motion failed collision checking");
+            continue;
+        }
+
+        parent_heur = GetGoalHeuristic(parent_id);
+        succ_heur = GetGoalHeuristic(successor->id());
+
+        if(succ_heur < end_heur)
+          break;
+
+        int drop_heur = succ_heur - parent_heur;
+        reward[episode].push_back(drop_heur);
+        traj[episode].push_back(successor);
+        chosen_action.push_back(num);
+
+        parent_id = successor->id();
+        t++;
+      }
+
+      if(succ_heur < end_heur)
+          break;
+
+      for(int step = 0 ; step < 100000; step++){
+        
+        int r_sum = 0;
+        for(int j = step; j < 100000; j++){
+          r_sum += reward[episode][j];
+        }
+        del_theta[chosen_action[step]] += (int)(cum_reward[step]/theta[chosen_action[step]]); 
+      }
+
+      for(int step = 0 ; step < 100000; step++){
+        theta[chosen_action[step]] += del_theta[chosen_action[step]];
+      }     
+
+      episode++;
+    }
+
+    ROS_INFO("Policy gradient finished");
+    getchar();
+}
+
 void Environment::GetSuccs(int sourceStateID, vector<int>* succIDs, 
                            vector<int>* costs){
     GetSuccs(0, sourceStateID, succIDs, costs);
@@ -350,10 +441,11 @@ void Environment::GetSuccs(int q_id, int sourceStateID, vector<int>* succIDs,
       int heur = GetGoalHeuristic(sourceStateID);
       if(heur < m_min_heur){
         m_min_heur = heur;
-        ROS_INFO("Heuristic of expanding state %d", heur);
+        ROS_DEBUG("Heuristic of expanding state %d", heur);
       }
       else{
         ROS_WARN("Search at a Local minima heur is %d but minimum is %d", heur, m_min_heur);
+        LearnPolicy(sourceStateID);
       }
     }
 

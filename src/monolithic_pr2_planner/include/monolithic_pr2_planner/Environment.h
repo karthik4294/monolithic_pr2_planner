@@ -12,6 +12,8 @@
 #include <stdexcept>
 #include <vector>
 #include <memory>
+#include <numeric>
+#include <random>
 
 #define NUM_SMHA_HEUR 4 // Used in EnvInterfaces to initialize the planner.
 #define NUM_IMHA_HEUR 4 // Used in EnvInterfaces to initialize the planner.
@@ -49,6 +51,8 @@ namespace monolithic_pr2_planner {
             void reset();
             void setPlannerType(int planner_type);
             void setUseNewHeuristics(bool use_new_heuristics){m_use_new_heuristics = use_new_heuristics;};
+
+            void LearnPolicy(int sourceStateID);
 
         protected:
             bool setStartGoal(SearchRequestPtr search_request, 
