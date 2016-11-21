@@ -55,6 +55,7 @@ namespace monolithic_pr2_planner {
             void PolicyGradient(int sourceStateID);
             void CrossEntropy(int sourceStateID);
             void generateTraj(int sourceStateID,  std::vector<double> p);
+            void getDistribution(std::discrete_distribution<> & dist, std::vector<double> p);
 
         protected:
             bool setStartGoal(SearchRequestPtr search_request, 

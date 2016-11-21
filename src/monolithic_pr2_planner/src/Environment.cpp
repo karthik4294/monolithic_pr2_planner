@@ -324,6 +324,15 @@ int Environment::GetGoalHeuristic(int heuristic_id, int stateID) {
     return std::max((*values).at("admissible_base"), (*values).at("admissible_endeff"));
 }
 
+void Environment::getDistribution(std::discrete_distribution<> & dist, std::vector<double> p){
+
+  std::discrete_distribution<> distribution(p.begin(), p.end());
+
+  dist.reset();
+
+  dist = distribution;
+}
+
 void Environment::generateTraj(int sourceStateID, std::vector<double> p){
 
   int parent_heur, succ_heur;
@@ -336,10 +345,11 @@ void Environment::generateTraj(int sourceStateID, std::vector<double> p){
   std::vector<double> mod_p = p;
 
   std::vector<int> traj_ids;
+  std::vector<int> f_action_ids;
   
   std::default_random_engine generator; 
-  std::discrete_distribution<> distribution(mod_p.begin(), mod_p.end());
-
+  std::discrete_distribution<> distribution;
+  
   while(t < 50000){
 
     t++;
@@ -347,6 +357,8 @@ void Environment::generateTraj(int sourceStateID, std::vector<double> p){
     if(f_action_ids.size() == 0){
       for (int i = 0; i < prim_size; i++)
         f_action_ids.push_back(i);
+      mod_p = p;
+      getDistribution(distribution, mod_p);
     }
 
     int num = distribution(generator);
@@ -362,6 +374,9 @@ void Environment::generateTraj(int sourceStateID, std::vector<double> p){
     TransitionData t_data;
     if (!mprim->apply(*source_state, successor, t_data)) {
         ROS_WARN("Couldn't apply action");
+        mod_p[num] = 0.0;
+        f_action_ids.erase(std::remove(f_action_ids.begin(), f_action_ids.end(), num), f_action_ids.end() );
+        getDistribution(distribution, mod_p);
         continue;
     }
 
@@ -373,11 +388,17 @@ void Environment::generateTraj(int sourceStateID, std::vector<double> p){
         ROS_INFO("Motion succeeded");
     } else {
         ROS_WARN("Motion failed collision checking");
+        mod_p[num] = 0.0;
+        f_action_ids.erase(std::remove(f_action_ids.begin(), f_action_ids.end(), num), f_action_ids.end() );
+        getDistribution(distribution, mod_p);
         continue;
     }
 
     if(std::find(traj_ids.begin(), traj_ids.end(), successor->id()) != traj_ids.end()){
         ROS_WARN("State exists");
+        mod_p[num] = 0.0;
+        f_action_ids.erase(std::remove(f_action_ids.begin(), f_action_ids.end(), num), f_action_ids.end() );
+        getDistribution(distribution, mod_p);
         continue;
     }
 
