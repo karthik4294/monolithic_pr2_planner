@@ -52,7 +52,9 @@ namespace monolithic_pr2_planner {
             void setPlannerType(int planner_type);
             void setUseNewHeuristics(bool use_new_heuristics){m_use_new_heuristics = use_new_heuristics;};
 
-            void LearnPolicy(int sourceStateID);
+            void PolicyGradient(int sourceStateID);
+            void CrossEntropy(int sourceStateID);
+            void generateTraj(int sourceStateID,  std::vector<double> p);
 
         protected:
             bool setStartGoal(SearchRequestPtr search_request, 
