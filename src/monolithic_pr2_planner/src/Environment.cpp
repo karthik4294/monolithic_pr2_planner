@@ -333,9 +333,10 @@ void Environment::getDistribution(std::discrete_distribution<> & dist, std::vect
   dist = distribution;
 }
 
-void Environment::generateTraj(int sourceStateID, std::vector<double> p){
+std::vector<int> Environment::generateTraj(int sourceStateID, std::vector<double> p, int &cum_reward){
 
   int parent_heur, succ_heur;
+  int drop_heur = 0;
 
   int t = 0;
   int parent_id = sourceStateID;
@@ -347,10 +348,15 @@ void Environment::generateTraj(int sourceStateID, std::vector<double> p){
   std::vector<int> traj_ids;
   std::vector<int> f_action_ids;
   
-  std::default_random_engine generator; 
+  std::random_device rd;
+  std::mt19937 generator(rd()); 
   std::discrete_distribution<> distribution;
   
-  while(t < 50000){
+  GraphStatePtr source_state, successor;
+
+  traj_ids.push_back(sourceStateID);  
+
+  while(t < 10000){
 
     t++;
 
@@ -365,13 +371,12 @@ void Environment::generateTraj(int sourceStateID, std::vector<double> p){
 
     auto mprim = (m_mprims.getMotionPrims()).at(num);
 
-    traj_ids.push_back(parent_id);
-
     ROS_INFO("Parent id %d", parent_id);
 
-    GraphStatePtr source_state = m_hash_mgr->getGraphState(parent_id);
-    GraphStatePtr successor;
+    source_state = m_hash_mgr->getGraphState(parent_id);
+
     TransitionData t_data;
+
     if (!mprim->apply(*source_state, successor, t_data)) {
         ROS_WARN("Couldn't apply action");
         mod_p[num] = 0.0;
@@ -409,16 +414,17 @@ void Environment::generateTraj(int sourceStateID, std::vector<double> p){
     parent_heur = GetGoalHeuristic(parent_id);
     succ_heur = GetGoalHeuristic(successor->id());
 
+    traj_ids.push_back(successor->id());
+
     if(succ_heur < m_min_heur){
       ROS_INFO("We are out of the local minima succ heur is %d min is %d", succ_heur, m_min_heur);
-      getchar();
-      return;
+      break;
     }
     else{
       ROS_WARN("We are still in local minima succ heur is %d min is %d", succ_heur, m_min_heur);
     }
 
-    int drop_heur = parent_heur - succ_heur;
+    drop_heur += parent_heur - succ_heur;
 
     parent_id = successor->id();
     f_action_ids.clear();
@@ -427,8 +433,10 @@ void Environment::generateTraj(int sourceStateID, std::vector<double> p){
     t++;
   }
 
+  cum_reward = drop_heur;
   ROS_INFO("Traj generation done");
 
+  return traj_ids;
 }
 
 void Environment::PolicyGradient(int sourceStateID){
@@ -654,7 +662,22 @@ void Environment::GetSuccs(int q_id, int sourceStateID, vector<int>* succIDs,
       int prim_size = m_mprims.getMotionPrims().size();
       double pval = (double)(1.00/prim_size);
       std::vector<double> p(prim_size, pval);
-      generateTraj(sourceStateID, p);
+
+      int num_trajs = 50;
+      std::vector<std::vector<int>> trajectories(num_trajs);
+      std::vector<int> cum_reward(num_trajs, 0);
+
+      for(int i = 0; i < num_trajs; i++){
+        trajectories[i] = generateTraj(sourceStateID, p, cum_reward[i]);
+      }
+
+      for(int i = 0; i < num_trajs; i++){
+        // for(int j = 0; j < trajectories[i].size(); j++){
+        //   printf("Traj id at %d is %d\n", j, trajectories[i][j]);
+        // }
+        printf("Trajectory rewards %d\n", cum_reward[i]);
+      }
+
     }
 
 }

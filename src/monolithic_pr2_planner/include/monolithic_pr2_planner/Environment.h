@@ -54,7 +54,8 @@ namespace monolithic_pr2_planner {
 
             void PolicyGradient(int sourceStateID);
             void CrossEntropy(int sourceStateID);
-            void generateTraj(int sourceStateID,  std::vector<double> p);
+            std::vector<int> generateTraj(int sourceStateID,  std::vector<double> p,
+                                          int &cum_reward);
             void getDistribution(std::discrete_distribution<> & dist, std::vector<double> p);
 
         protected:

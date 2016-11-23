@@ -11,7 +11,7 @@
 #include <tf2/LinearMath/Vector3.h>
 #include <climits>
 
-#define EPS 2.0
+#define EPS 50.0
 
 using namespace monolithic_pr2_planner_node;
 using namespace monolithic_pr2_planner;
