@@ -651,8 +651,9 @@ void Environment::GetSuccs(int q_id, int sourceStateID, vector<int>* succIDs,
       int heur = GetGoalHeuristic(sourceStateID);
       ROS_WARN("Search at a Local minima : source is %d minimum is %d", heur, m_min_heur);
       getchar();
-      size_t prim_size = m_mprims.getMotionPrims().size();
-      std::vector<double> p(prim_size, 1/prim_size);
+      int prim_size = m_mprims.getMotionPrims().size();
+      double pval = (double)(1.00/prim_size);
+      std::vector<double> p(prim_size, pval);
       generateTraj(sourceStateID, p);
     }
 
