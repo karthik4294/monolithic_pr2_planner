@@ -26,11 +26,11 @@ Environment::Environment(ros::NodeHandle nh, bool learn_phase)
         m_planner_type(T_SMHA),
         m_min_heur(INFINITECOST),
         m_learn_phase(learn_phase),
-        m_theta(39, 1){
+        m_theta(22, 1){
         m_param_catalog.fetch(nh);
         configurePlanningDomain();
 
-        for(int i = 0; i < 39; i++){
+        for(int i = 0; i < 22; i++){
           m_theta(i, 0) = 0;
         }
 
@@ -338,58 +338,85 @@ std::discrete_distribution<> Environment::GetDistribution(std::vector<double> p)
   return distribution;
 }
 
-std::vector<int> Environment::GenerateTraj(int sourceStateID, std::vector<int> &drop_heur){
+Trajectory Environment::GenerateTraj(int sourceStateID){
 
+  // Graphs states for source and succs
+  // and their heurs
+  GraphStatePtr source_state, successor;
   int parent_heur, succ_heur;
+  std::vector<int> drop_heur;
+  double cum_drop_heur;
 
-  int t = 0;
-  int parent_id = sourceStateID;
-
-  size_t prim_size = (m_mprims.getMotionPrims()).size();
-
+  // vector of probs  
   std::vector<double> probs;
   std::vector<double> mod_p;
 
+  // policy gradient along the traj
+  std::vector<double> p_gradient;
+
+  // storing trajectory ids, their succs
+  // and actions
   std::vector<int> traj_ids;
   std::vector<int> f_action_ids;
+  std::vector<int> action_ids;
+  std::vector<int> cum_rewards;
+
+  // Succ ids of each state
+  std::vector<int> succ_ids;
   
+  // variables for the prob distribution
   std::random_device rd;
   std::mt19937 generator(rd()); 
   std::discrete_distribution<> distribution;
+
+  // initialise
+  int t = 0;
+  int parent_id = sourceStateID;
+  size_t prim_size = (m_mprims.getMotionPrims()).size();
   
-  GraphStatePtr source_state, successor;
-
-  traj_ids.push_back(sourceStateID);  
-
-  bool next_state = true;
-
-  std::vector<int> succ_ids;
+  traj_ids.push_back(parent_id);  
+  bool new_state = true;
 
   while(t < 10000){
-
     t++;
 
-    if(next_state)
+    // Every time we see a new state, initialise 
+    // all actions and their probs based on 
+    // softmax
+    if(new_state)
     { 
       source_state = m_hash_mgr->getGraphState(parent_id);
-     
-      for (int i = 0; i < prim_size; i++) {
-        auto mprim = (m_mprims.getMotionPrims()).at(i);
+      
+      auto t = succ_map.find(parent_id);
+      if (t == succ_map.end())
+      {
+        for (int i = 0; i < prim_size; i++) {
+          auto mprim = (m_mprims.getMotionPrims()).at(i);
 
-        GraphStatePtr succ;
-        TransitionData trans;
-        if (!mprim->apply(*source_state, succ, trans)) {
-          succ_ids.push_back(parent_id);          
+          GraphStatePtr succ;
+          TransitionData trans;
+          if (!mprim->apply(*source_state, succ, trans)) {
+            succ_ids.push_back(parent_id);          
+          }
+          else{
+            m_hash_mgr->save(succ);
+            succ_ids.push_back(succ->id());
+          }
         }
-        else{
-          m_hash_mgr->save(succ);
-          succ_ids.push_back(succ->id());
-        }
+        probs = GetSoftmaxProbs(parent_id, succ_ids);
+        succ_map[parent_id] = succ_ids;
+        prob_map[parent_id] = probs;
       }
-      probs = GetSoftmaxProbs(sourceStateID, succ_ids);
-      next_state = false;
+      else{
+        succ_ids = succ_map[parent_id];
+        probs = prob_map[parent_id];
+      }
+
+      new_state = false;
     }     
 
+    // Generate the distribution based on 
+    // softmax probabilities 
     if(f_action_ids.size() == 0){
       for (int i = 0; i < prim_size; i++)
         f_action_ids.push_back(i);
@@ -397,51 +424,71 @@ std::vector<int> Environment::GenerateTraj(int sourceStateID, std::vector<int> &
       distribution = GetDistribution(mod_p);
     }
 
+    // Pick action from the distribution
     int num = distribution(generator);
 
+    // get the corresponding primitve
     auto mprim = (m_mprims.getMotionPrims()).at(num);
 
-    TransitionData t_data;
-
+    // get the chosen succ graph state
     successor = m_hash_mgr->getGraphState(succ_ids[num]);
 
+    // Check for collision and valid transition
+    TransitionData t_data;
     if (m_cspace_mgr->isValidSuccessor(*successor,t_data) &&
         m_cspace_mgr->isValidTransitionStates(t_data)){
 
         ROS_INFO("Motion succeeded");
     } else {
         ROS_WARN("Motion failed collision checking");
-        mod_p[num] = 0.0;
-        f_action_ids.erase(std::remove(f_action_ids.begin(), f_action_ids.end(), num), f_action_ids.end() );
-        distribution = GetDistribution(mod_p);
+        // mod_p[num] = 0.0;
+        // f_action_ids.erase(std::remove(f_action_ids.begin(), f_action_ids.end(), num), f_action_ids.end() );
+        // distribution = GetDistribution(mod_p);
         continue;
     }
 
+    // Don't retrace states while generating traj(not sure about this though)
     if(std::find(traj_ids.begin(), traj_ids.end(), successor->id()) != traj_ids.end()){
         ROS_WARN("State exists");
-        mod_p[num] = 0.0;
-        f_action_ids.erase(std::remove(f_action_ids.begin(), f_action_ids.end(), num), f_action_ids.end() );
-        distribution = GetDistribution(mod_p);
+        // mod_p[num] = 0.0;
+        // f_action_ids.erase(std::remove(f_action_ids.begin(), f_action_ids.end(), num), f_action_ids.end() );
+        // distribution = GetDistribution(mod_p);
         continue;
     }
 
+    // visualize the action
     successor->robot_pose().visualize();
 
     parent_heur = GetGoalHeuristic(parent_id);
     succ_heur = GetGoalHeuristic(successor->id());
 
+    // Save the new state id, drop in heur
+    // the action, and probs
     traj_ids.push_back(successor->id());
-    drop_heur.push_back(parent_heur - succ_heur);
+    drop_heur.push_back(cum_drop_heur + parent_heur - succ_heur);
+    cum_drop_heur += (parent_heur - succ_heur);
+    action_ids.push_back(num);
 
+    // Moving on to next state in trajectory gen
     parent_id = successor->id();
     f_action_ids.clear();
     succ_ids.clear();
-    next_state = true;
+    new_state = true;
 
     ROS_INFO("t is %d",t);
   }
 
-  return traj_ids;
+  cum_rewards.push_back(cum_drop_heur);
+
+  for(int i = 0; i < (drop_heur.size() - 1); i++)
+    cum_rewards.push_back( (cum_drop_heur - drop_heur[i]) );
+
+  Trajectory traj;
+  traj.traj_ids = traj_ids;
+  traj.action_ids = action_ids;
+  traj.cum_rewards = cum_rewards;
+
+  return traj;
 }
 
 Eigen::MatrixXd Environment::GetFeatureVector(int lm_state_id_1, int lm_state_id_2){
@@ -451,7 +498,7 @@ Eigen::MatrixXd Environment::GetFeatureVector(int lm_state_id_1, int lm_state_id
   GraphStatePtr start_state = m_hash_mgr->getGraphState(START_STATE);
   GraphStatePtr goal_state = m_hash_mgr->getGraphState(GOAL_STATE);
 
-  Eigen::MatrixXd feature(39,1);
+  Eigen::MatrixXd feature(22,1);
 
   feature(0, 0) = (lm_state->obj_x());
   feature(1, 0) = (lm_state->obj_y());
@@ -477,24 +524,24 @@ Eigen::MatrixXd Environment::GetFeatureVector(int lm_state_id_1, int lm_state_id
   feature(20, 0) = (lm_state_succ->base_y());
   feature(21, 0) = (lm_state_succ->base_theta());
 
-  feature(22, 0) = (start_state->obj_x());
-  feature(23, 0) = (start_state->obj_y());
-  feature(24, 0) = (start_state->obj_z());
-  feature(25, 0) = (start_state->obj_roll());
-  feature(26, 0) = (start_state->obj_pitch());
-  feature(27, 0) = (start_state->obj_yaw());
-  feature(28, 0) = (start_state->obj_right_fa());
-  feature(29, 0) = (start_state->obj_left_fa());
-  feature(30, 0) = (start_state->base_x());
-  feature(31, 0) = (start_state->base_y());
-  feature(32, 0) = (start_state->base_theta());
+  // feature(22, 0) = (start_state->obj_x());
+  // feature(23, 0) = (start_state->obj_y());
+  // feature(24, 0) = (start_state->obj_z());
+  // feature(25, 0) = (start_state->obj_roll());
+  // feature(26, 0) = (start_state->obj_pitch());
+  // feature(27, 0) = (start_state->obj_yaw());
+  // feature(28, 0) = (start_state->obj_right_fa());
+  // feature(29, 0) = (start_state->obj_left_fa());
+  // feature(30, 0) = (start_state->base_x());
+  // feature(31, 0) = (start_state->base_y());
+  // feature(32, 0) = (start_state->base_theta());
 
-  feature(33, 0) = (goal_state->obj_x());
-  feature(34, 0) = (goal_state->obj_y());
-  feature(35, 0) = (goal_state->obj_z());
-  feature(36, 0) = (goal_state->obj_roll());
-  feature(37, 0) = (goal_state->obj_pitch());
-  feature(38, 0) = (goal_state->obj_yaw());
+  // feature(33, 0) = (goal_state->obj_x());
+  // feature(34, 0) = (goal_state->obj_y());
+  // feature(35, 0) = (goal_state->obj_z());
+  // feature(36, 0) = (goal_state->obj_roll());
+  // feature(37, 0) = (goal_state->obj_pitch());
+  // feature(38, 0) = (goal_state->obj_yaw());
 
   return feature;
 }
@@ -620,15 +667,14 @@ void Environment::GetSuccs(int q_id, int sourceStateID, vector<int>* succIDs,
       int heur = GetGoalHeuristic(sourceStateID);
       ROS_WARN("Search at a Local minima : source is %d minimum is %d", heur, m_min_heur);
       getchar();
-      int prim_size = m_mprims.getMotionPrims().size();
 
       int num_trajs = 50;
 
-      std::vector<std::vector<int>> trajectories(num_trajs);
+      std::vector<Trajectory> trajectories(num_trajs);
       std::vector<std::vector<int>> drop_heur(num_trajs);
 
       for(int i = 0; i < num_trajs; i++){
-        trajectories[i] = GenerateTraj(sourceStateID, drop_heur[i]);
+        trajectories[i] = GenerateTraj(sourceStateID);
       }
 
       // for(int i = 0; i < num_trajs; i++){

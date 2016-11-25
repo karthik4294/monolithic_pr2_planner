@@ -15,6 +15,7 @@
 #include <numeric>
 #include <random>
 #include <math.h>
+#include <unordered_map>
 
 #include <eigen3/Eigen/Geometry> 
 
@@ -24,12 +25,18 @@
 
 #define INFINITECOST 1000000000
 
-
 namespace monolithic_pr2_planner {
     /*! \brief Implements a complete environment used by the SBPL planner.
      * Contains everything from managing state IDs to collision space
      * information.
      */
+
+    struct Trajectory{
+        std::vector<int> traj_ids;
+        std::vector<int> action_ids;
+        std::vector<int> cum_rewards;
+    };
+
     typedef std::pair<int, int> Edge;
     class Environment : public EnvironmentMHA {
         public:
@@ -55,7 +62,7 @@ namespace monolithic_pr2_planner {
             void setPlannerType(int planner_type);
             void setUseNewHeuristics(bool use_new_heuristics){m_use_new_heuristics = use_new_heuristics;};
 
-            std::vector<int> GenerateTraj(int sourceStateID, std::vector<int> &drop_heur);
+            Trajectory GenerateTraj(int sourceStateID);
             std::discrete_distribution<> GetDistribution(std::vector<double> p);
             Eigen::MatrixXd GetFeatureVector(int lm_state_id_1, int lm_state_id_2);
             std::vector<double> GetSoftmaxProbs(int sourceStateID, std::vector<int> succ_ids);
@@ -84,6 +91,8 @@ namespace monolithic_pr2_planner {
             bool m_learn_phase;
 
             Eigen::MatrixXd m_theta;
+            std::unordered_map<int, std::vector<int>> succ_map;
+            std::unordered_map<int, std::vector<double>> prob_map;
 
         // SBPL interface stuff
         public:
