@@ -13,6 +13,7 @@
 
 #define GOAL_STATE 1
 #define START_STATE 0
+
 using namespace monolithic_pr2_planner;
 using namespace boost;
 
@@ -24,9 +25,15 @@ Environment::Environment(ros::NodeHandle nh, bool learn_phase)
         m_using_lazy(false),
         m_planner_type(T_SMHA),
         m_min_heur(INFINITECOST),
-        m_learn_phase(learn_phase){
+        m_learn_phase(learn_phase),
+        m_theta(1, 39){
         m_param_catalog.fetch(nh);
         configurePlanningDomain();
+
+        for(int i = 0; i < 39; i++){
+          m_theta(i, 0) = 0;
+        }
+
 }
 
 /**
@@ -324,26 +331,24 @@ int Environment::GetGoalHeuristic(int heuristic_id, int stateID) {
     return std::max((*values).at("admissible_base"), (*values).at("admissible_endeff"));
 }
 
-void Environment::getDistribution(std::discrete_distribution<> & dist, std::vector<double> p){
+std::discrete_distribution<> Environment::GetDistribution(std::vector<double> p){
 
   std::discrete_distribution<> distribution(p.begin(), p.end());
 
-  dist.reset();
-
-  dist = distribution;
+  return distribution;
 }
 
-std::vector<int> Environment::generateTraj(int sourceStateID, std::vector<double> p, int &cum_reward){
+std::vector<int> Environment::GenerateTraj(int sourceStateID, std::vector<int> &drop_heur){
 
   int parent_heur, succ_heur;
-  int drop_heur = 0;
 
   int t = 0;
   int parent_id = sourceStateID;
 
   size_t prim_size = (m_mprims.getMotionPrims()).size();
 
-  std::vector<double> mod_p = p;
+  std::vector<double> probs;
+  std::vector<double> mod_p;
 
   std::vector<int> traj_ids;
   std::vector<int> f_action_ids;
@@ -356,34 +361,48 @@ std::vector<int> Environment::generateTraj(int sourceStateID, std::vector<double
 
   traj_ids.push_back(sourceStateID);  
 
+  bool next_state = true;
+
+  std::vector<int> succ_ids;
+
   while(t < 10000){
 
     t++;
 
+    if(next_state)
+    { 
+      source_state = m_hash_mgr->getGraphState(parent_id);
+     
+      for (int i = 0; i < prim_size; i++) {
+        auto mprim = (m_mprims.getMotionPrims()).at(i);
+
+        GraphStatePtr succ;
+        TransitionData trans;
+        if (!mprim->apply(*source_state, succ, trans)) {
+          succ_ids.push_back(parent_id);          
+        }
+        else{
+          succ_ids.push_back(succ->id());
+        }
+      }
+      probs = GetSoftmaxProbs(sourceStateID, succ_ids);
+      next_state = false;
+    }     
+
     if(f_action_ids.size() == 0){
       for (int i = 0; i < prim_size; i++)
         f_action_ids.push_back(i);
-      mod_p = p;
-      getDistribution(distribution, mod_p);
+      mod_p = probs;
+      distribution = GetDistribution(mod_p);
     }
 
     int num = distribution(generator);
 
     auto mprim = (m_mprims.getMotionPrims()).at(num);
 
-    ROS_INFO("Parent id %d", parent_id);
-
-    source_state = m_hash_mgr->getGraphState(parent_id);
-
     TransitionData t_data;
 
-    if (!mprim->apply(*source_state, successor, t_data)) {
-        ROS_WARN("Couldn't apply action");
-        mod_p[num] = 0.0;
-        f_action_ids.erase(std::remove(f_action_ids.begin(), f_action_ids.end(), num), f_action_ids.end() );
-        getDistribution(distribution, mod_p);
-        continue;
-    }
+    successor = m_hash_mgr->getGraphState(succ_ids[num]);
 
     if (m_cspace_mgr->isValidSuccessor(*successor,t_data) &&
         m_cspace_mgr->isValidTransitionStates(t_data)){
@@ -395,7 +414,7 @@ std::vector<int> Environment::generateTraj(int sourceStateID, std::vector<double
         ROS_WARN("Motion failed collision checking");
         mod_p[num] = 0.0;
         f_action_ids.erase(std::remove(f_action_ids.begin(), f_action_ids.end(), num), f_action_ids.end() );
-        getDistribution(distribution, mod_p);
+        distribution = GetDistribution(mod_p);
         continue;
     }
 
@@ -403,155 +422,105 @@ std::vector<int> Environment::generateTraj(int sourceStateID, std::vector<double
         ROS_WARN("State exists");
         mod_p[num] = 0.0;
         f_action_ids.erase(std::remove(f_action_ids.begin(), f_action_ids.end(), num), f_action_ids.end() );
-        getDistribution(distribution, mod_p);
+        distribution = GetDistribution(mod_p);
         continue;
     }
 
-    ROS_INFO("Succ is %d", successor->id());
-    
     successor->robot_pose().visualize();
 
     parent_heur = GetGoalHeuristic(parent_id);
     succ_heur = GetGoalHeuristic(successor->id());
 
     traj_ids.push_back(successor->id());
-
-    if(succ_heur < m_min_heur){
-      ROS_INFO("We are out of the local minima succ heur is %d min is %d", succ_heur, m_min_heur);
-      break;
-    }
-    else{
-      ROS_WARN("We are still in local minima succ heur is %d min is %d", succ_heur, m_min_heur);
-    }
-
-    drop_heur += parent_heur - succ_heur;
+    drop_heur.push_back(parent_heur - succ_heur);
 
     parent_id = successor->id();
     f_action_ids.clear();
+    succ_ids.clear();
+    next_state = true;
 
     ROS_INFO("t is %d",t);
-    t++;
   }
-
-  cum_reward = drop_heur;
-  ROS_INFO("Traj generation done");
 
   return traj_ids;
 }
 
-void Environment::PolicyGradient(int sourceStateID){
+Eigen::MatrixXd Environment::GetFeatureVector(int lm_state_id_1, int lm_state_id_2){
+  
+  GraphStatePtr lm_state = m_hash_mgr->getGraphState(lm_state_id_1);
+  GraphStatePtr lm_state_succ = m_hash_mgr->getGraphState(lm_state_id_2);
+  GraphStatePtr start_state = m_hash_mgr->getGraphState(START_STATE);
+  GraphStatePtr goal_state = m_hash_mgr->getGraphState(GOAL_STATE);
 
-    ROS_INFO("Starting policy gradient");
+  Eigen::MatrixXd feature(39,1);;
 
-    int end_heur = m_min_heur;
+  feature(0, 0) = (lm_state->obj_x());
+  feature(1, 0) = (lm_state->obj_y());
+  feature(2, 0) = (lm_state->obj_z());
+  feature(3, 0) = (lm_state->obj_roll());
+  feature(4, 0) = (lm_state->obj_pitch());
+  feature(5, 0) = (lm_state->obj_yaw());
+  feature(6, 0) = (lm_state->obj_right_fa());
+  feature(7, 0) = (lm_state->obj_left_fa());
+  feature(8, 0) = (lm_state->base_x());
+  feature(9, 0) = (lm_state->base_y());
+  feature(10, 0) = (lm_state->base_theta());
 
-    std::default_random_engine generator; 
-    int parent_heur, succ_heur;
+  feature(11, 0) = (lm_state_succ->obj_x());
+  feature(12, 0) = (lm_state_succ->obj_y());
+  feature(13, 0) = (lm_state_succ->obj_z());
+  feature(14, 0) = (lm_state_succ->obj_roll());
+  feature(15, 0) = (lm_state_succ->obj_pitch());
+  feature(16, 0) = (lm_state_succ->obj_yaw());
+  feature(17, 0) = (lm_state_succ->obj_right_fa());
+  feature(18, 0) = (lm_state_succ->obj_left_fa());
+  feature(19, 0) = (lm_state_succ->base_x());
+  feature(20, 0) = (lm_state_succ->base_y());
+  feature(21, 0) = (lm_state_succ->base_theta());
 
-    int episode = 0;
+  feature(22, 0) = (start_state->obj_x());
+  feature(23, 0) = (start_state->obj_y());
+  feature(24, 0) = (start_state->obj_z());
+  feature(25, 0) = (start_state->obj_roll());
+  feature(26, 0) = (start_state->obj_pitch());
+  feature(27, 0) = (start_state->obj_yaw());
+  feature(28, 0) = (start_state->obj_right_fa());
+  feature(29, 0) = (start_state->obj_left_fa());
+  feature(30, 0) = (start_state->base_x());
+  feature(31, 0) = (start_state->base_y());
+  feature(32, 0) = (start_state->base_theta());
 
-    while(episode < 1)
-    {    
-      int t = 0;
+  feature(33, 0) = (goal_state->obj_x());
+  feature(34, 0) = (goal_state->obj_y());
+  feature(35, 0) = (goal_state->obj_z());
+  feature(36, 0) = (goal_state->obj_roll());
+  feature(37, 0) = (goal_state->obj_pitch());
+  feature(38, 0) = (goal_state->obj_yaw());
 
-      int parent_id = sourceStateID;
-
-      std::vector<int> theta((m_mprims.getMotionPrims()).size(), 1);
-      std::vector<int> del_theta((m_mprims.getMotionPrims()).size(), 0);
-      
-      ROS_INFO("Mprims size %zu", (m_mprims.getMotionPrims()).size());
-      getchar();
-
-      std::vector<std::vector<GraphStatePtr>> traj(100);
-      std::vector<std::vector<int>> reward(100);
-      std::vector<int> cum_reward;
-      std::vector<int> chosen_action;
-
-      std::discrete_distribution<int> distribution(theta.begin(), theta.end());
-
-      std::vector<int> traj_ids;
-      std::vector<int> f_action_ids;
-
-      while(t < 10000){
-
-        int num = distribution(generator);
-
-        if(std::find(f_action_ids.begin(), f_action_ids.end(), num) != f_action_ids.end())
-          continue;
-
-        auto mprim = (m_mprims.getMotionPrims()).at(num);
-
-        traj_ids.push_back(parent_id);
-
-        ROS_INFO("Parent id %d", parent_id);
-
-        GraphStatePtr source_state = m_hash_mgr->getGraphState(parent_id);
-        GraphStatePtr successor;
-        TransitionData t_data;
-        if (!mprim->apply(*source_state, successor, t_data)) {
-            ROS_WARN("Couldn't apply action");
-            f_action_ids.push_back(num);
-            continue;
-        }
-
-        if (m_cspace_mgr->isValidSuccessor(*successor,t_data) &&
-            m_cspace_mgr->isValidTransitionStates(t_data)){
-
-            m_hash_mgr->save(successor);
-
-            ROS_INFO("Motion succeeded");
-        } else {
-            ROS_WARN("Motion failed collision checking");
-            f_action_ids.push_back(num);
-            continue;
-        }
-
-        ROS_INFO("Succ is %d", successor->id());
-
-        if(std::find(traj_ids.begin(), traj_ids.end(), successor->id()) != traj_ids.end()){
-            ROS_WARN("State exists");
-            f_action_ids.push_back(num);
-            continue;
-        }
-        
-        successor->robot_pose().visualize();
-
-        parent_heur = GetGoalHeuristic(parent_id);
-        succ_heur = GetGoalHeuristic(successor->id());
-
-        int drop_heur = succ_heur - parent_heur;
-        reward[episode].push_back(drop_heur);
-        traj[episode].push_back(successor);
-        chosen_action.push_back(num);
-
-        parent_id = successor->id();
-        t++;
-        f_action_ids.clear();
-        getchar();
-      }
-
-      // for(int step = 0 ; step < 100000; step++){
-        
-      //   int r_sum = 0;
-      //   for(int j = step; j < 100000; j++){
-      //     r_sum += reward[episode][j];
-      //   }
-      //   del_theta[chosen_action[step]] += (int)(cum_reward[step]/theta[chosen_action[step]]); 
-      // }
-
-      // for(int step = 0 ; step < 100000; step++){
-      //   theta[chosen_action[step]] += del_theta[chosen_action[step]];
-      // }     
-
-      episode++;
-    }
-
-    ROS_INFO("Policy gradient finished");
-    getchar();
+  return feature;
 }
 
-void Environment::CrossEntropy(int sourceStateID){
+std::vector<double> Environment::GetSoftmaxProbs(int sourceStateID, std::vector<int> succ_ids){
 
+  double sum = 0;
+  std::vector<double> wt(succ_ids.size(), 0.0);
+
+  for(int i = 0; i < succ_ids.size(); i++){
+
+    Eigen::MatrixXd feature = GetFeatureVector(sourceStateID, succ_ids[i]);
+  
+    if(succ_ids[i] == sourceStateID){
+      wt[i] = 0.0;
+    }
+    else{
+      Eigen::MatrixXd tf = (m_theta.transpose())*feature;
+      wt[i] = exp(tf(0,0));
+    }
+    
+    sum += wt[i];
+  }
+
+  return wt;
 }
 
 void Environment::GetSuccs(int sourceStateID, vector<int>* succIDs, 
@@ -574,22 +543,19 @@ void Environment::GetSuccs(int q_id, int sourceStateID, vector<int>* succIDs,
 
     bool at_local_min = true;
 
-    // if(m_learn_phase){
-    //   /**
-    //   Keep track of the minimum heuristic so as to 
-    //   declare local minima
-    //   **/
-    //   int heur = GetGoalHeuristic(sourceStateID);
-    //   if(heur < m_min_heur){
-    //     m_min_heur = heur;
-    //     ROS_DEBUG("Heuristic of expanding state %d", heur);
-    //   }
-    //   else{
-    //     ROS_WARN("Search at a Local minima heur is %d but minimum is %d", heur, m_min_heur);
-    //     getchar();
-    //     generateTraj(sourceStateID);
-    //   }
-    // }
+
+    if(m_learn_phase){
+      /**
+      Keep track of the minimum heuristic so as to 
+      declare local minima
+      **/
+      int heur = GetGoalHeuristic(sourceStateID);
+      if(heur < m_min_heur){
+        m_min_heur = heur;
+        at_local_min = false;
+        ROS_DEBUG("Heuristic of succ state %d", heur);
+      }
+    }
 
     succIDs->clear();
     succIDs->reserve(m_mprims.getMotionPrims().size());
@@ -619,65 +585,61 @@ void Environment::GetSuccs(int q_id, int sourceStateID, vector<int>* succIDs,
 
         if (m_cspace_mgr->isValidSuccessor(*successor,t_data) &&
             m_cspace_mgr->isValidTransitionStates(t_data)){
-            ROS_DEBUG_NAMED(SEARCH_LOG, "Source state is:");
-            source_state->printToDebug(SEARCH_LOG);
-            m_hash_mgr->save(successor);
-            ROS_DEBUG_NAMED(MPRIM_LOG, "successor state with id %d is:", 
-                            successor->id());
-            successor->printToDebug(MPRIM_LOG);
+          ROS_DEBUG_NAMED(SEARCH_LOG, "Source state is:");
+          source_state->printToDebug(SEARCH_LOG);
+          m_hash_mgr->save(successor);
+          ROS_DEBUG_NAMED(MPRIM_LOG, "successor state with id %d is:", 
+                          successor->id());
+          successor->printToDebug(MPRIM_LOG);
 
-            if (m_goal->isSatisfiedBy(successor)){
-                m_goal->storeAsSolnState(successor);
-                ROS_DEBUG_NAMED(SEARCH_LOG, "Found potential goal at state %d %d", successor->id(),
-                    mprim->cost());
-                succIDs->push_back(GOAL_STATE);
-            } else {
-                succIDs->push_back(successor->id());
-            }
-            costs->push_back(mprim->cost());
-            ROS_DEBUG_NAMED(SEARCH_LOG, "motion succeeded with cost %d", mprim->cost());
-
-            if(m_learn_phase){
-            /**
-            Keep track of the minimum heuristic so as to 
-            declare local minima
-            **/
-            int sheur = GetGoalHeuristic(successor->id());
-            if(sheur < m_min_heur){
-              m_min_heur = sheur;
-              at_local_min = false;
-              ROS_DEBUG("Heuristic of succ state %d", sheur);
-            }
+          if (m_goal->isSatisfiedBy(successor)){
+              m_goal->storeAsSolnState(successor);
+              ROS_DEBUG_NAMED(SEARCH_LOG, "Found potential goal at state %d %d", successor->id(),
+                  mprim->cost());
+              succIDs->push_back(GOAL_STATE);
+          } else {
+              succIDs->push_back(successor->id());
           }
+          costs->push_back(mprim->cost());
+          ROS_DEBUG_NAMED(SEARCH_LOG, "motion succeeded with cost %d", mprim->cost());
+
         } else {
             //successor->robot_pose().visualize();
             ROS_DEBUG_NAMED(SEARCH_LOG, "successor failed collision checking");
         }
     }
 
+
+    /**
+    While learning local minima
+    **/
     if(at_local_min){
+
       int heur = GetGoalHeuristic(sourceStateID);
       ROS_WARN("Search at a Local minima : source is %d minimum is %d", heur, m_min_heur);
       getchar();
       int prim_size = m_mprims.getMotionPrims().size();
-      double pval = (double)(1.00/prim_size);
-      std::vector<double> p(prim_size, pval);
 
       int num_trajs = 50;
       std::vector<std::vector<int>> trajectories(num_trajs);
-      std::vector<int> cum_reward(num_trajs, 0);
+      std::vector<std::vector<int>> drop_heur(num_trajs);
 
       for(int i = 0; i < num_trajs; i++){
-        trajectories[i] = generateTraj(sourceStateID, p, cum_reward[i]);
+        trajectories[i] = GenerateTraj(sourceStateID, drop_heur[i]);
       }
 
-      for(int i = 0; i < num_trajs; i++){
-        // for(int j = 0; j < trajectories[i].size(); j++){
-        //   printf("Traj id at %d is %d\n", j, trajectories[i][j]);
-        // }
-        printf("Trajectory rewards %d\n", cum_reward[i]);
-      }
+      // for(int i = 0; i < num_trajs; i++){
+      //   printf("Trajectory rewards %d\n", cum_reward[i]);
+      // }
 
+      // auto res_ind = std::max_element(cum_reward.begin(), cum_reward.end());
+
+      // int best_traj = std::distance(cum_reward.begin(), res_ind);
+
+      // for(int i = 0; i < trajectories[best_traj].size(); i++){
+      //   GraphStatePtr vis_state = m_hash_mgr->getGraphState(trajectories[best_traj][i]);
+      //   vis_state->robot_pose().visualize(60.0);
+      // }
     }
 
 }

@@ -14,6 +14,9 @@
 #include <memory>
 #include <numeric>
 #include <random>
+#include <math.h>
+
+#include <eigen3/Eigen/Geometry> 
 
 #define NUM_SMHA_HEUR 4 // Used in EnvInterfaces to initialize the planner.
 #define NUM_IMHA_HEUR 4 // Used in EnvInterfaces to initialize the planner.
@@ -52,11 +55,10 @@ namespace monolithic_pr2_planner {
             void setPlannerType(int planner_type);
             void setUseNewHeuristics(bool use_new_heuristics){m_use_new_heuristics = use_new_heuristics;};
 
-            void PolicyGradient(int sourceStateID);
-            void CrossEntropy(int sourceStateID);
-            std::vector<int> generateTraj(int sourceStateID,  std::vector<double> p,
-                                          int &cum_reward);
-            void getDistribution(std::discrete_distribution<> & dist, std::vector<double> p);
+            std::vector<int> GenerateTraj(int sourceStateID, std::vector<int> &drop_heur);
+            std::discrete_distribution<> GetDistribution(std::vector<double> p);
+            Eigen::MatrixXd GetFeatureVector(int lm_state_id_1, int lm_state_id_2);
+            std::vector<double> GetSoftmaxProbs(int sourceStateID, std::vector<int> succ_ids);
 
         protected:
             bool setStartGoal(SearchRequestPtr search_request, 
@@ -80,6 +82,8 @@ namespace monolithic_pr2_planner {
 
             int m_min_heur;
             bool m_learn_phase;
+
+            Eigen::MatrixXd m_theta;
 
         // SBPL interface stuff
         public:

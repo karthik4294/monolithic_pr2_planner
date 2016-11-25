@@ -533,7 +533,7 @@ bool EnvInterfaces::runARAPlanner(int planner_type,
     
     ReplanParams replan_params(req.allocated_planning_time);
 
-    replan_params.return_first_solution = false;
+    replan_params.return_first_solution = true;
     replan_params.initial_eps = EPS;
     replan_params.final_eps = EPS;
     replan_params.dec_eps = 0.2;
