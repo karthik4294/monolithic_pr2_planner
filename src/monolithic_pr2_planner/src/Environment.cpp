@@ -26,7 +26,7 @@ Environment::Environment(ros::NodeHandle nh, bool learn_phase)
         m_planner_type(T_SMHA),
         m_min_heur(INFINITECOST),
         m_learn_phase(learn_phase),
-        m_theta(1, 39){
+        m_theta(39, 1){
         m_param_catalog.fetch(nh);
         configurePlanningDomain();
 
@@ -382,6 +382,7 @@ std::vector<int> Environment::GenerateTraj(int sourceStateID, std::vector<int> &
           succ_ids.push_back(parent_id);          
         }
         else{
+          m_hash_mgr->save(succ);
           succ_ids.push_back(succ->id());
         }
       }
@@ -406,8 +407,6 @@ std::vector<int> Environment::GenerateTraj(int sourceStateID, std::vector<int> &
 
     if (m_cspace_mgr->isValidSuccessor(*successor,t_data) &&
         m_cspace_mgr->isValidTransitionStates(t_data)){
-
-        m_hash_mgr->save(successor);
 
         ROS_INFO("Motion succeeded");
     } else {
@@ -452,7 +451,7 @@ Eigen::MatrixXd Environment::GetFeatureVector(int lm_state_id_1, int lm_state_id
   GraphStatePtr start_state = m_hash_mgr->getGraphState(START_STATE);
   GraphStatePtr goal_state = m_hash_mgr->getGraphState(GOAL_STATE);
 
-  Eigen::MatrixXd feature(39,1);;
+  Eigen::MatrixXd feature(39,1);
 
   feature(0, 0) = (lm_state->obj_x());
   feature(1, 0) = (lm_state->obj_y());
@@ -519,6 +518,9 @@ std::vector<double> Environment::GetSoftmaxProbs(int sourceStateID, std::vector<
     
     sum += wt[i];
   }
+
+  for(double w : wt)
+    w /= sum;
 
   return wt;
 }
@@ -621,6 +623,7 @@ void Environment::GetSuccs(int q_id, int sourceStateID, vector<int>* succIDs,
       int prim_size = m_mprims.getMotionPrims().size();
 
       int num_trajs = 50;
+
       std::vector<std::vector<int>> trajectories(num_trajs);
       std::vector<std::vector<int>> drop_heur(num_trajs);
 
