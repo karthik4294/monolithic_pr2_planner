@@ -15,18 +15,18 @@ RobotState StartGoalGenerator::generateRandomState(Region* region_ptr){
     while (!foundState){
         ContObjectState obj_state;
         ContBaseState base;
-        base.z(randomDouble(0.0, 0.3));
+
         obj_state.x(randomDouble(0.35, 1.2));
         obj_state.y(randomDouble(-0.6, 0.6));
         obj_state.z(randomDouble(-0.6, 0.6));
 
         // TODO find some better values here
-        obj_state.roll(0);
-        obj_state.pitch(randomDouble(0, 1.5));
-        obj_state.yaw(randomDouble(-1.396, 1.396));
-
-        //ROS_INFO("random object state is");
-        //obj_state.printToDebug(HEUR_LOG);
+        obj_state.roll(randomDouble(0, 2*M_PI));
+        // obj_state.roll(0);
+        // obj_state.pitch(randomDouble(0, 1.5));
+        obj_state.pitch(randomDouble(0, 2*M_PI));
+        // obj_state.yaw(randomDouble(-1.396, 1.396));
+        obj_state.yaw(randomDouble(0, 2*M_PI));
 
         RightContArmState r_arm;
         r_arm.setUpperArmRoll(randomDouble(-3.75, .65));
@@ -58,32 +58,17 @@ RobotState StartGoalGenerator::generateRandomState(Region* region_ptr){
             y_lower_bound = (region.y_min-padding < 0) ? 0 : region.y_min-padding;
             y_upper_bound = (region.y_max+padding > Y_MAX) ? Y_MAX : region.y_max+padding;
         }
+
         base.x(randomDouble(x_lower_bound, x_upper_bound));
         base.y(randomDouble(y_lower_bound, y_upper_bound));
         base.theta(randomDouble(-M_PI, M_PI));
-        
-        vector<double> init_l_arm(7,0);
-        init_l_arm[0] = (0.038946287971107774);
-        init_l_arm[1] = (1.2146697069025374);
-        init_l_arm[2] = (1.3963556492780154);
-        init_l_arm[3] = -1.1972269899800325;
-        init_l_arm[4] = (-4.616317135720829);
-        init_l_arm[5] = -0.9887266887318599;
-        init_l_arm[6] = 1.1755681069775656;
-        LeftContArmState init_l_arm_v(init_l_arm);
-        RobotState seed_state(base, r_arm, init_l_arm_v);
+        base.z(randomDouble(0.0, 0.3));
 
-        //ROS_INFO("printing seed state");
-        //seed_state.printToInfo(HEUR_LOG);
+        RobotState seed_state(base, r_arm, l_arm);
 
-        foundState = RobotState::computeRobotPose(DiscObjectState(obj_state), seed_state, 
+        seed_state.setPlanningMode(PlanningModes::RIGHT_ARM_MOBILE);
+        foundState = seed_state.computeRobotPose(DiscObjectState(obj_state), seed_state, 
                                                   final_state);
-        if (!foundState){
-            //ROS_ERROR("ik failed, trying again");
-        } else {
-            //ROS_INFO("found a state");
-            //final_state->printToInfo(HEUR_LOG);
-        }
     }
     return *final_state;
 }

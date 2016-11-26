@@ -4,7 +4,7 @@
 
 
 #define X_MIN 0
-#define X_MAX 9
+#define X_MAX 10//9
 #define Y_MIN 0
 #define Y_MAX 6
 #define Z_MIN 0
