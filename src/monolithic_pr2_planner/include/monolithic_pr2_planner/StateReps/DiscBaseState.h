@@ -23,7 +23,7 @@ namespace monolithic_pr2_planner {
             int theta() const { return m_state[BodyDOF::THETA]; };
 
             // TODO typo
-            void geStateValues(std::vector<int>* values) const;
+            void getStateValues(std::vector<int>* values) const;
             std::vector<int>::const_iterator getCoordBegin(){ return m_state.begin(); };
             std::vector<int>::const_iterator getCoordEnd(){ return m_state.end(); };
 

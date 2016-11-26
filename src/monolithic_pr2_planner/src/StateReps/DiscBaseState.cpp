@@ -31,7 +31,7 @@ DiscBaseState::DiscBaseState(ContBaseState body_state): m_state(4){
     m_state[BodyDOF::THETA] = convertContTheta(body_state.theta());
 }
 
-void DiscBaseState::geStateValues(vector<int>* values) const {
+void DiscBaseState::getStateValues(vector<int>* values) const {
     *values = m_state;
 }
 
