@@ -40,7 +40,10 @@ namespace monolithic_pr2_planner_node {
             void getParams();
             bool planPathCallback(GetMobileArmPlan::Request &req, 
                                   GetMobileArmPlan::Response &res);
+            bool planRandomPathsCallback(GetMobileArmPlan::Request &req, 
+                                  GetMobileArmPlan::Response &res);
             void bindPlanPathToEnv(std::string service_name);
+            void bindPlanRandomPathsToEnv(std::string service_name);
             void bindExperimentToEnv(std::string service_name);
             void bindWriteExperimentToEnv(string service_name);
             void bindDemoToEnv(std::string service_name);

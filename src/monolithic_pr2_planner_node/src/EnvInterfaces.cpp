@@ -72,6 +72,12 @@ void EnvInterfaces::bindPlanPathToEnv(string service_name) {
                                                  this);
 }
 
+void EnvInterfaces::bindPlanRandomPathsToEnv(string service_name) {
+  m_plan_service = m_nodehandle.advertiseService(service_name,
+                                                 &EnvInterfaces::planRandomPathsCallback,
+                                                 this);
+}
+
 void EnvInterfaces::bindExperimentToEnv(string service_name) {
   m_experiment_service = m_nodehandle.advertiseService(service_name,
                                                        &EnvInterfaces::experimentCallback,
@@ -473,6 +479,8 @@ bool EnvInterfaces::runARAPlanner(int planner_type,
   total_planning_time = clock();
   ROS_INFO("configuring request");
 
+
+
   if (!m_env->configureRequest(search_request, start_id, goal_id)) {
     ROS_ERROR("Unable to configure request for %s! Trial ID: %d",
               planner_prefix.c_str(), counter);
@@ -533,7 +541,7 @@ bool EnvInterfaces::runARAPlanner(int planner_type,
     
     ReplanParams replan_params(req.allocated_planning_time);
 
-    replan_params.return_first_solution = true;
+    replan_params.return_first_solution = false;
     replan_params.initial_eps = EPS;
     replan_params.final_eps = EPS;
     replan_params.dec_eps = 0.2;
@@ -609,6 +617,80 @@ bool EnvInterfaces::planPathCallback(GetMobileArmPlan::Request &req,
   search_request->planning_mode = req.planning_mode;
   search_request->obj_goal = req.goal;
   search_request->obj_start = req.start;
+
+  res.stats_field_names.resize(18);
+  res.stats.resize(18);
+  int start_id, goal_id;
+  static int counter = 0;
+  bool isPlanFound;
+
+  double total_planning_time = clock();
+  bool forward_search = true;
+  
+  if(req.planner_type != -1)
+  {
+    isPlanFound = runMHAPlanner(monolithic_pr2_planner::T_SMHA, "smha_", req, res,
+                                search_request, counter);
+  }
+  else{
+    isPlanFound = runARAPlanner(monolithic_pr2_planner::T_ARA, "ara_", req, res,
+                              search_request, counter);
+  }
+
+  counter++;
+  return true;
+}
+
+bool EnvInterfaces::planRandomPathsCallback(GetMobileArmPlan::Request &req,
+                                     GetMobileArmPlan::Response &res) {
+  boost::unique_lock<boost::mutex> lock(mutex);
+
+  vector<pair<RobotState, RobotState>> start_goal_pairs;
+
+  // m_generator->initializeRegions();
+  m_generator->generateUniformPairs(1, start_goal_pairs);
+
+  auto start_goal = start_goal_pairs[0];  
+
+  SearchRequestParamsPtr search_request = make_shared<SearchRequestParams>();
+
+  search_request->initial_epsilon = req.initial_eps;
+  search_request->final_epsilon = req.final_eps;
+  search_request->decrement_epsilon = req.dec_eps;    
+  search_request->base_start = start_goal.first.base_state();
+  search_request->base_goal = start_goal.second.base_state();
+  search_request->left_arm_start = start_goal.first.left_arm();
+  search_request->right_arm_start = start_goal.first.right_arm();
+  search_request->left_arm_goal = start_goal.second.left_arm();
+  search_request->right_arm_goal = start_goal.second.right_arm();
+  search_request->obj_start = start_goal.first.getObjectStateRelMap();
+  search_request->obj_goal = start_goal.second.getObjectStateRelMap();
+
+  KDL::Frame rarm_offset, larm_offset;
+  rarm_offset.p.x(req.rarm_object.pose.position.x);
+  rarm_offset.p.y(req.rarm_object.pose.position.y);
+  rarm_offset.p.z(req.rarm_object.pose.position.z);
+  larm_offset.p.x(req.larm_object.pose.position.x);
+  larm_offset.p.y(req.larm_object.pose.position.y);
+  larm_offset.p.z(req.larm_object.pose.position.z);
+
+  rarm_offset.M = Rotation::Quaternion(
+                    req.rarm_object.pose.orientation.x,
+                    req.rarm_object.pose.orientation.y,
+                    req.rarm_object.pose.orientation.z,
+                    req.rarm_object.pose.orientation.w);
+  larm_offset.M = Rotation::Quaternion(
+                    req.larm_object.pose.orientation.x,
+                    req.larm_object.pose.orientation.y,
+                    req.larm_object.pose.orientation.z,
+                    req.larm_object.pose.orientation.w);
+  search_request->left_arm_object = larm_offset;
+  search_request->right_arm_object = rarm_offset;
+  search_request->xyz_tolerance = req.xyz_tolerance;
+  search_request->roll_tolerance = req.roll_tolerance;
+  search_request->pitch_tolerance = req.pitch_tolerance;
+  search_request->yaw_tolerance = req.yaw_tolerance;
+  search_request->planning_mode = req.planning_mode;
 
   res.stats_field_names.resize(18);
   res.stats.resize(18);

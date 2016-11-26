@@ -112,6 +112,9 @@ target_link_libraries(run_demo monolithic_pr2_planner ${tf2_LIBRARIES})
 add_executable(runTests src/run_tests.cpp)
 target_link_libraries(runTests monolithic_pr2_planner)
 
+add_executable(runSampledTests src/run_sampled_tests.cpp)
+target_link_libraries(runSampledTests monolithic_pr2_planner)
+
 add_executable(generateExperimentsNode src/generateExperimentsNode.cpp)
 add_dependencies(generateExperimentsNode ${catkin_EXPORTED_TARGETS})
 target_link_libraries(generateExperimentsNode monolithic_pr2_planner)

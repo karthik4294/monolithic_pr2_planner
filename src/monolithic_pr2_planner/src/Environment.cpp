@@ -592,7 +592,6 @@ void Environment::GetSuccs(int q_id, int sourceStateID, vector<int>* succIDs,
 
     bool at_local_min = true;
 
-
     if(m_learn_phase){
       /**
       Keep track of the minimum heuristic so as to 
@@ -677,18 +676,6 @@ void Environment::GetSuccs(int q_id, int sourceStateID, vector<int>* succIDs,
         trajectories[i] = GenerateTraj(sourceStateID);
       }
 
-      // for(int i = 0; i < num_trajs; i++){
-      //   printf("Trajectory rewards %d\n", cum_reward[i]);
-      // }
-
-      // auto res_ind = std::max_element(cum_reward.begin(), cum_reward.end());
-
-      // int best_traj = std::distance(cum_reward.begin(), res_ind);
-
-      // for(int i = 0; i < trajectories[best_traj].size(); i++){
-      //   GraphStatePtr vis_state = m_hash_mgr->getGraphState(trajectories[best_traj][i]);
-      //   vis_state->robot_pose().visualize(60.0);
-      // }
     }
 
 }
