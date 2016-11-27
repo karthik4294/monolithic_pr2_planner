@@ -62,10 +62,13 @@ namespace monolithic_pr2_planner {
             void setPlannerType(int planner_type);
             void setUseNewHeuristics(bool use_new_heuristics){m_use_new_heuristics = use_new_heuristics;};
 
+            void set_theta(Eigen::MatrixXd theta);
             Trajectory GenerateTraj(int sourceStateID);
             std::discrete_distribution<> GetDistribution(std::vector<double> p);
             Eigen::MatrixXd GetFeatureVector(int lm_state_id_1, int lm_state_id_2);
             std::vector<double> GetSoftmaxProbs(int sourceStateID, std::vector<int> succ_ids);
+            Eigen::MatrixXd GetGradient(int state_id, int action_id, int cum_reward);
+            void UpdateTheta(Eigen::MatrixXd &theta);
 
         protected:
             bool setStartGoal(SearchRequestPtr search_request, 
@@ -89,6 +92,10 @@ namespace monolithic_pr2_planner {
 
             int m_min_heur;
             bool m_learn_phase;
+            int m_num_trajs;
+            int m_traj_ts;
+
+            std::vector<Trajectory> m_trajectories;
 
             Eigen::MatrixXd m_theta;
             std::unordered_map<int, std::vector<int>> succ_map;

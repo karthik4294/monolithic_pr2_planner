@@ -26,14 +26,10 @@ Environment::Environment(ros::NodeHandle nh, bool learn_phase)
         m_planner_type(T_SMHA),
         m_min_heur(INFINITECOST),
         m_learn_phase(learn_phase),
-        m_theta(22, 1){
+        m_num_trajs(1),
+        m_traj_ts(100){
         m_param_catalog.fetch(nh);
         configurePlanningDomain();
-
-        for(int i = 0; i < 22; i++){
-          m_theta(i, 0) = 0;
-        }
-
 }
 
 /**
@@ -49,6 +45,10 @@ void Environment::reset() {
 
     // Fetch params again, in case they're being modified between calls.
     // m_param_catalog.fetch(m_nodehandle);
+}
+
+void Environment::set_theta(Eigen::MatrixXd theta) {
+    m_theta = theta;
 }
 
 /**
@@ -377,7 +377,7 @@ Trajectory Environment::GenerateTraj(int sourceStateID){
   traj_ids.push_back(parent_id);  
   bool new_state = true;
 
-  while(t < 10000){
+  while(t < m_traj_ts){
     t++;
 
     // Every time we see a new state, initialise 
@@ -572,6 +572,44 @@ std::vector<double> Environment::GetSoftmaxProbs(int sourceStateID, std::vector<
   return wt;
 }
 
+Eigen::MatrixXd Environment::GetGradient(int state_id, int action_id, int cum_reward){
+  
+  std::vector<int> succ_ids = succ_map[state_id];
+  std::vector<double> probs = prob_map[state_id];
+
+  auto curr_feature = GetFeatureVector(state_id, succ_ids[action_id]);
+  double sum_probs = std::accumulate(probs.begin(), probs.end(), 0);
+
+  Eigen::MatrixXd sum_ft_probs;
+  for(int i = 0; i < probs.size(); i++){
+    sum_ft_probs += probs[i]*GetFeatureVector(state_id, succ_ids[i]);
+  }
+
+  Eigen::MatrixXd grad = (cum_reward/sum_probs)*(curr_feature - sum_ft_probs);
+
+  return grad;
+}
+
+void Environment::UpdateTheta(Eigen::MatrixXd &theta){
+  
+  Eigen::MatrixXd grad;
+
+  for(auto traj : m_trajectories)
+  {
+    std::vector<int>  traj_ids = traj.traj_ids;
+    std::vector<int>  action_ids = traj.action_ids;
+    std::vector<int>  cum_rewards = traj.cum_rewards;
+
+    for(int i = 0; i < action_ids.size(); i++)
+    {
+      grad += GetGradient(traj_ids[i], action_ids[i], cum_rewards[i]);
+    }
+  }  
+
+  theta = m_theta + grad;  
+
+}
+
 void Environment::GetSuccs(int sourceStateID, vector<int>* succIDs, 
                            vector<int>* costs){
     GetSuccs(0, sourceStateID, succIDs, costs);
@@ -657,7 +695,6 @@ void Environment::GetSuccs(int q_id, int sourceStateID, vector<int>* succIDs,
         }
     }
 
-
     /**
     While learning local minima
     **/
@@ -667,13 +704,8 @@ void Environment::GetSuccs(int q_id, int sourceStateID, vector<int>* succIDs,
       ROS_WARN("Search at a Local minima : source is %d minimum is %d", heur, m_min_heur);
       getchar();
 
-      int num_trajs = 50;
-
-      std::vector<Trajectory> trajectories(num_trajs);
-      std::vector<std::vector<int>> drop_heur(num_trajs);
-
-      for(int i = 0; i < num_trajs; i++){
-        trajectories[i] = GenerateTraj(sourceStateID);
+      for(int i = 0; i < m_num_trajs; i++){
+        m_trajectories.push_back(GenerateTraj(sourceStateID));
       }
 
     }

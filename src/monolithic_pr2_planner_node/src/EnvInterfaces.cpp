@@ -470,9 +470,17 @@ bool EnvInterfaces::runARAPlanner(int planner_type,
 
   ros::NodeHandle ph("~");
 
+  Eigen::MatrixXd theta(22, 1);
+
+  for(int i = 0; i < 22; i++)
+  {
+    theta(i, 0) = 0.0;
+  }
+
   printf("\n");
   ROS_INFO("Initialize environment");
   m_env->reset();
+  m_env->set_theta(theta);
 
   m_ara_planner.reset(new ARAPlanner(m_env.get(), forward_search));
   
@@ -547,6 +555,11 @@ bool EnvInterfaces::runARAPlanner(int planner_type,
     replan_params.dec_eps = 0.2;
 
     isPlanFound = m_ara_planner->replan(&soln, replan_params, &soln_cost);
+
+    m_env->UpdateTheta(theta);
+
+    std::cout << theta << std::endl;
+    getchar();
 
     if (isPlanFound) {
       ROS_INFO("Plan found in %s Planner. Moving on to reconstruction.",
