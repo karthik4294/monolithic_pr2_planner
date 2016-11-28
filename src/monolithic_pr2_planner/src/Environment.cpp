@@ -27,7 +27,8 @@ Environment::Environment(ros::NodeHandle nh, bool learn_phase)
         m_min_heur(INFINITECOST),
         m_learn_phase(learn_phase),
         m_num_trajs(1),
-        m_traj_ts(100){
+        m_traj_ts(100),
+        m_alpha(0.05){
         m_param_catalog.fetch(nh);
         configurePlanningDomain();
 }
@@ -42,6 +43,9 @@ void Environment::reset() {
     // m_heur_mgr->setCollisionSpaceMgr(m_cspace_mgr);
     m_hash_mgr.reset(new HashManager(&StateID2IndexMapping));
     m_edges.clear();
+
+    m_succ_map.clear();
+    m_prob_map.clear();
 
     // Fetch params again, in case they're being modified between calls.
     // m_param_catalog.fetch(m_nodehandle);
@@ -349,7 +353,6 @@ Trajectory Environment::GenerateTraj(int sourceStateID){
 
   // vector of probs  
   std::vector<double> probs;
-  std::vector<double> mod_p;
 
   // policy gradient along the traj
   std::vector<double> p_gradient;
@@ -357,7 +360,6 @@ Trajectory Environment::GenerateTraj(int sourceStateID){
   // storing trajectory ids, their succs
   // and actions
   std::vector<int> traj_ids;
-  std::vector<int> f_action_ids;
   std::vector<int> action_ids;
   std::vector<int> cum_rewards;
 
@@ -376,6 +378,7 @@ Trajectory Environment::GenerateTraj(int sourceStateID){
   
   traj_ids.push_back(parent_id);  
   bool new_state = true;
+  std::vector<TransitionData> trans(prim_size);
 
   while(t < m_traj_ts){
     t++;
@@ -387,15 +390,13 @@ Trajectory Environment::GenerateTraj(int sourceStateID){
     { 
       source_state = m_hash_mgr->getGraphState(parent_id);
       
-      auto t = succ_map.find(parent_id);
-      if (t == succ_map.end())
+      auto it = m_succ_map.find(parent_id);
+      if (it == m_succ_map.end())
       {
         for (int i = 0; i < prim_size; i++) {
           auto mprim = (m_mprims.getMotionPrims()).at(i);
-
           GraphStatePtr succ;
-          TransitionData trans;
-          if (!mprim->apply(*source_state, succ, trans)) {
+          if (!mprim->apply(*source_state, succ, trans[i])) {
             succ_ids.push_back(parent_id);          
           }
           else{
@@ -404,28 +405,26 @@ Trajectory Environment::GenerateTraj(int sourceStateID){
           }
         }
         probs = GetSoftmaxProbs(parent_id, succ_ids);
-        succ_map[parent_id] = succ_ids;
-        prob_map[parent_id] = probs;
+        m_succ_map[parent_id] = succ_ids;
+        m_prob_map[parent_id] = probs;
       }
       else{
-        succ_ids = succ_map[parent_id];
-        probs = prob_map[parent_id];
+        succ_ids = m_succ_map[parent_id];
+        probs = m_prob_map[parent_id];
       }
 
+      distribution = GetDistribution(probs);
       new_state = false;
     }     
 
-    // Generate the distribution based on 
-    // softmax probabilities 
-    if(f_action_ids.size() == 0){
-      for (int i = 0; i < prim_size; i++)
-        f_action_ids.push_back(i);
-      mod_p = probs;
-      distribution = GetDistribution(mod_p);
-    }
-
     // Pick action from the distribution
     int num = distribution(generator);
+
+    ROS_INFO("Chosen action : %d Parent id %d Succ id %d", num, parent_id, succ_ids[num]);
+
+    if(succ_ids[num] == parent_id){
+      continue;
+    }
 
     // get the corresponding primitve
     auto mprim = (m_mprims.getMotionPrims()).at(num);
@@ -434,7 +433,7 @@ Trajectory Environment::GenerateTraj(int sourceStateID){
     successor = m_hash_mgr->getGraphState(succ_ids[num]);
 
     // Check for collision and valid transition
-    TransitionData t_data;
+    TransitionData t_data = trans[num];
     if (m_cspace_mgr->isValidSuccessor(*successor,t_data) &&
         m_cspace_mgr->isValidTransitionStates(t_data)){
 
@@ -471,7 +470,6 @@ Trajectory Environment::GenerateTraj(int sourceStateID){
 
     // Moving on to next state in trajectory gen
     parent_id = successor->id();
-    f_action_ids.clear();
     succ_ids.clear();
     new_state = true;
 
@@ -493,36 +491,50 @@ Trajectory Environment::GenerateTraj(int sourceStateID){
 
 Eigen::MatrixXd Environment::GetFeatureVector(int lm_state_id_1, int lm_state_id_2){
   
+  std::cout << "parent " << lm_state_id_1 << std::endl;
+  std::cout << "succ " << lm_state_id_2 << std::endl;
+
+  // remove hardcoded numbers
+  double obj_norm_rpy = m_param_catalog.m_robot_resolution_params.num_rpy_angles - 1;
+  double base_norm_yaw = m_param_catalog.m_robot_resolution_params.num_base_angles - 1;
+  double obj_norm_fa = m_param_catalog.m_robot_resolution_params.num_free_angle_angles - 1;
+  double base_norm_x = 10.0/m_param_catalog.m_occupancy_grid_params.env_resolution;
+  double base_norm_y = 6.0/m_param_catalog.m_occupancy_grid_params.env_resolution;
+  double base_norm_z = 2.0/m_param_catalog.m_occupancy_grid_params.env_resolution;
+  double obj_norm_xyz = 2.0/m_param_catalog.m_occupancy_grid_params.env_resolution;
+
   GraphStatePtr lm_state = m_hash_mgr->getGraphState(lm_state_id_1);
   GraphStatePtr lm_state_succ = m_hash_mgr->getGraphState(lm_state_id_2);
   GraphStatePtr start_state = m_hash_mgr->getGraphState(START_STATE);
   GraphStatePtr goal_state = m_hash_mgr->getGraphState(GOAL_STATE);
 
+  std::cout << "Got my states" << std::endl;
+
   Eigen::MatrixXd feature(22,1);
 
-  feature(0, 0) = (lm_state->obj_x());
-  feature(1, 0) = (lm_state->obj_y());
-  feature(2, 0) = (lm_state->obj_z());
-  feature(3, 0) = (lm_state->obj_roll());
-  feature(4, 0) = (lm_state->obj_pitch());
-  feature(5, 0) = (lm_state->obj_yaw());
-  feature(6, 0) = (lm_state->obj_right_fa());
-  feature(7, 0) = (lm_state->obj_left_fa());
-  feature(8, 0) = (lm_state->base_x());
-  feature(9, 0) = (lm_state->base_y());
-  feature(10, 0) = (lm_state->base_theta());
+  feature(0, 0) = ((double)lm_state->obj_x()/obj_norm_xyz);
+  feature(1, 0) = ((double)lm_state->obj_y()/obj_norm_xyz);
+  feature(2, 0) = ((double)lm_state->obj_z()/obj_norm_xyz);
+  feature(3, 0) = ((double)lm_state->obj_roll()/obj_norm_rpy);
+  feature(4, 0) = ((double)lm_state->obj_pitch()/obj_norm_rpy);
+  feature(5, 0) = ((double)lm_state->obj_yaw()/obj_norm_rpy);
+  feature(6, 0) = ((double)lm_state->obj_right_fa()/obj_norm_fa);
+  feature(7, 0) = ((double)lm_state->obj_left_fa()/obj_norm_fa);
+  feature(8, 0) = ((double)lm_state->base_x()/base_norm_x);
+  feature(9, 0) = ((double)lm_state->base_y()/base_norm_y);
+  feature(10, 0) = ((double)lm_state->base_theta()/base_norm_yaw);
 
-  feature(11, 0) = (lm_state_succ->obj_x());
-  feature(12, 0) = (lm_state_succ->obj_y());
-  feature(13, 0) = (lm_state_succ->obj_z());
-  feature(14, 0) = (lm_state_succ->obj_roll());
-  feature(15, 0) = (lm_state_succ->obj_pitch());
-  feature(16, 0) = (lm_state_succ->obj_yaw());
-  feature(17, 0) = (lm_state_succ->obj_right_fa());
-  feature(18, 0) = (lm_state_succ->obj_left_fa());
-  feature(19, 0) = (lm_state_succ->base_x());
-  feature(20, 0) = (lm_state_succ->base_y());
-  feature(21, 0) = (lm_state_succ->base_theta());
+  feature(11, 0) = ((double)lm_state_succ->obj_x()/obj_norm_xyz);
+  feature(12, 0) = ((double)lm_state_succ->obj_y()/obj_norm_xyz);
+  feature(13, 0) = ((double)lm_state_succ->obj_z()/obj_norm_xyz);
+  feature(14, 0) = ((double)lm_state_succ->obj_roll()/obj_norm_rpy);
+  feature(15, 0) = ((double)lm_state_succ->obj_pitch()/obj_norm_rpy);
+  feature(16, 0) = ((double)lm_state_succ->obj_yaw()/obj_norm_rpy);
+  feature(17, 0) = ((double)lm_state_succ->obj_right_fa()/obj_norm_fa);
+  feature(18, 0) = ((double)lm_state_succ->obj_left_fa()/obj_norm_fa);
+  feature(19, 0) = ((double)lm_state_succ->base_x()/base_norm_x);
+  feature(20, 0) = ((double)lm_state_succ->base_y()/base_norm_y);
+  feature(21, 0) = ((double)lm_state_succ->base_theta()/base_norm_yaw);
 
   // feature(22, 0) = (start_state->obj_x());
   // feature(23, 0) = (start_state->obj_y());
@@ -548,51 +560,88 @@ Eigen::MatrixXd Environment::GetFeatureVector(int lm_state_id_1, int lm_state_id
 
 std::vector<double> Environment::GetSoftmaxProbs(int sourceStateID, std::vector<int> succ_ids){
 
-  double sum = 0;
+  double max_wt = 0.0;
   std::vector<double> wt(succ_ids.size(), 0.0);
 
   for(int i = 0; i < succ_ids.size(); i++){
 
-    Eigen::MatrixXd feature = GetFeatureVector(sourceStateID, succ_ids[i]);
-  
+    Eigen::MatrixXd tf = (m_theta.transpose())*GetFeatureVector(sourceStateID, succ_ids[i]);
+    wt[i] = tf(0,0);
+
+    if(wt[i] > max_wt)
+      max_wt = wt[i];
+  }
+
+  for(int i = 0; i < wt.size(); i++)
+  { 
     if(succ_ids[i] == sourceStateID){
       wt[i] = 0.0;
     }
-    else{
-      Eigen::MatrixXd tf = (m_theta.transpose())*feature;
-      wt[i] = exp(tf(0,0));
+    else{ 
+      wt[i] = exp(wt[i] - max_wt);
     }
-    
-    sum += wt[i];
   }
 
-  for(double w : wt)
-    w /= sum;
+  // double sum = std::accumulate(wt.begin(), wt.end(), 0.0);
+
+  // if(sum != 0.0){
+  //   for(int i = 0; i < wt.size(); i++)
+  //   { 
+  //     wt[i] /= sum;
+  //   }
+  // }
 
   return wt;
 }
 
 Eigen::MatrixXd Environment::GetGradient(int state_id, int action_id, int cum_reward){
   
-  std::vector<int> succ_ids = succ_map[state_id];
-  std::vector<double> probs = prob_map[state_id];
+  std::vector<int> succ_ids = m_succ_map[state_id];
+  std::vector<double> probs = m_prob_map[state_id];
 
-  auto curr_feature = GetFeatureVector(state_id, succ_ids[action_id]);
-  double sum_probs = std::accumulate(probs.begin(), probs.end(), 0);
+  std::cout << "Got my succ and probs" << std::endl;
 
-  Eigen::MatrixXd sum_ft_probs;
-  for(int i = 0; i < probs.size(); i++){
-    sum_ft_probs += probs[i]*GetFeatureVector(state_id, succ_ids[i]);
+  std::cout << "Action " << action_id << std::endl;
+  std::cout << "State id " << state_id << std::endl;
+  std::cout << "Succ size " << succ_ids.size() << std::endl;
+  std::cout << "Map size " << m_succ_map.size() << std::endl;
+
+  auto it = m_succ_map.find(state_id);
+  if(it == m_succ_map.end()){
+    ROS_INFO("Strangest thing ever");
   }
 
-  Eigen::MatrixXd grad = (cum_reward/sum_probs)*(curr_feature - sum_ft_probs);
+  auto ch_feature = GetFeatureVector(state_id, succ_ids[action_id]);
+  
+  std::cout << "Got my feature" << std::endl;
+
+  double sum_probs = std::accumulate(probs.begin(), probs.end(), 0.0);
+  
+  Eigen::MatrixXd sum_ft_probs = Eigen::MatrixXd::Zero(ch_feature.rows(), ch_feature.cols());
+  for(int i = 0; i < probs.size(); i++){    
+    auto ft = GetFeatureVector(state_id, succ_ids[i]);
+    sum_ft_probs += probs[i]*ft;
+  }
+
+
+  // std::cout << "Chosen feature" << ch_feature << std::endl;
+  // std::cout << "Sum ft probs" << sum_ft_probs << std::endl;
+
+  // std::cout << "Cum reward" << cum_reward << std::endl;
+  // std::cout << "Sum probs" << sum_probs << std::endl;
+
+  Eigen::MatrixXd grad = (cum_reward/sum_probs)*(ch_feature - sum_ft_probs);
+
+  // std::cout << "Grad" << grad << std::endl;
+
+  // getchar();
 
   return grad;
 }
 
 void Environment::UpdateTheta(Eigen::MatrixXd &theta){
   
-  Eigen::MatrixXd grad;
+  Eigen::MatrixXd grad = Eigen::MatrixXd::Zero(theta.rows(), theta.cols());
 
   for(auto traj : m_trajectories)
   {
@@ -606,7 +655,7 @@ void Environment::UpdateTheta(Eigen::MatrixXd &theta){
     }
   }  
 
-  theta = m_theta + grad;  
+  theta = m_theta + m_alpha*grad;  
 
 }
 
@@ -702,7 +751,7 @@ void Environment::GetSuccs(int q_id, int sourceStateID, vector<int>* succIDs,
 
       int heur = GetGoalHeuristic(sourceStateID);
       ROS_WARN("Search at a Local minima : source is %d minimum is %d", heur, m_min_heur);
-      getchar();
+      // getchar();
 
       for(int i = 0; i < m_num_trajs; i++){
         m_trajectories.push_back(GenerateTraj(sourceStateID));
@@ -981,7 +1030,7 @@ vector<FullBodyState> Environment::reconstructPath(vector<int> soln_path){
     PathPostProcessor postprocessor(m_hash_mgr, m_cspace_mgr);
     std::vector<FullBodyState> final_path = postprocessor.reconstructPath(soln_path, *m_goal, m_mprims.getMotionPrims());
     if(m_param_catalog.m_visualization_params.final_path){
-        postprocessor.visualizeFinalPath(final_path);
+        // postprocessor.visualizeFinalPath(final_path);
     }
     return final_path;
 }

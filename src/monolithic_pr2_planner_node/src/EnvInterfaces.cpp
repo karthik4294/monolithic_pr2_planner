@@ -470,24 +470,18 @@ bool EnvInterfaces::runARAPlanner(int planner_type,
 
   ros::NodeHandle ph("~");
 
-  Eigen::MatrixXd theta(22, 1);
-
-  for(int i = 0; i < 22; i++)
-  {
-    theta(i, 0) = 0.0;
-  }
+  Eigen::MatrixXd theta = Eigen::MatrixXd::Zero(22, 1);
 
   printf("\n");
   ROS_INFO("Initialize environment");
   m_env->reset();
+
   m_env->set_theta(theta);
 
   m_ara_planner.reset(new ARAPlanner(m_env.get(), forward_search));
   
   total_planning_time = clock();
   ROS_INFO("configuring request");
-
-
 
   if (!m_env->configureRequest(search_request, start_id, goal_id)) {
     ROS_ERROR("Unable to configure request for %s! Trial ID: %d",

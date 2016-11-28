@@ -122,7 +122,8 @@ bool CollisionSpaceMgr::isValidSuccessor(const GraphState& successor,
         return m_cspace->checkSpineMotion(l_arm, r_arm, body_pose, verbose, 
                                           dist, debug);
     } else {
-        throw std::invalid_argument("not a valid motion primitive type");
+        printf("Motion type %d\n", t_data.motion_type());
+        throw std::invalid_argument("[ValidSucc] not a valid motion primitive type");
     }
 
     return true;
@@ -177,7 +178,7 @@ bool CollisionSpaceMgr::isValidTransitionStates(const TransitionData& t_data){
                 return false;
             }
         } else {
-            throw std::invalid_argument("not a valid motion primitive type");
+            throw std::invalid_argument("[ValidTrans] not a valid motion primitive type");
         }
         idx++;
     }

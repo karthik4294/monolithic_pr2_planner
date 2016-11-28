@@ -94,12 +94,13 @@ namespace monolithic_pr2_planner {
             bool m_learn_phase;
             int m_num_trajs;
             int m_traj_ts;
+            double m_alpha;
 
             std::vector<Trajectory> m_trajectories;
 
             Eigen::MatrixXd m_theta;
-            std::unordered_map<int, std::vector<int>> succ_map;
-            std::unordered_map<int, std::vector<double>> prob_map;
+            std::unordered_map<int, std::vector<int>> m_succ_map;
+            std::unordered_map<int, std::vector<double>> m_prob_map;
 
         // SBPL interface stuff
         public:
