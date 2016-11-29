@@ -44,6 +44,7 @@ void Environment::reset() {
     m_hash_mgr.reset(new HashManager(&StateID2IndexMapping));
     m_edges.clear();
 
+    m_trajectories.clear();
     m_succ_map.clear();
     m_prob_map.clear();
 
@@ -378,7 +379,6 @@ Trajectory Environment::GenerateTraj(int sourceStateID){
   
   traj_ids.push_back(parent_id);  
   bool new_state = true;
-  std::vector<TransitionData> trans(prim_size);
 
   while(t < m_traj_ts){
     t++;
@@ -396,7 +396,8 @@ Trajectory Environment::GenerateTraj(int sourceStateID){
         for (int i = 0; i < prim_size; i++) {
           auto mprim = (m_mprims.getMotionPrims()).at(i);
           GraphStatePtr succ;
-          if (!mprim->apply(*source_state, succ, trans[i])) {
+          TransitionData trans;
+          if (!mprim->apply(*source_state, succ, trans)) {
             succ_ids.push_back(parent_id);          
           }
           else{
@@ -420,8 +421,6 @@ Trajectory Environment::GenerateTraj(int sourceStateID){
     // Pick action from the distribution
     int num = distribution(generator);
 
-    ROS_INFO("Chosen action : %d Parent id %d Succ id %d", num, parent_id, succ_ids[num]);
-
     if(succ_ids[num] == parent_id){
       continue;
     }
@@ -433,7 +432,9 @@ Trajectory Environment::GenerateTraj(int sourceStateID){
     successor = m_hash_mgr->getGraphState(succ_ids[num]);
 
     // Check for collision and valid transition
-    TransitionData t_data = trans[num];
+    GraphStatePtr succ;
+    TransitionData t_data;
+    mprim->apply(*source_state, succ, t_data);
     if (m_cspace_mgr->isValidSuccessor(*successor,t_data) &&
         m_cspace_mgr->isValidTransitionStates(t_data)){
 
@@ -491,9 +492,6 @@ Trajectory Environment::GenerateTraj(int sourceStateID){
 
 Eigen::MatrixXd Environment::GetFeatureVector(int lm_state_id_1, int lm_state_id_2){
   
-  std::cout << "parent " << lm_state_id_1 << std::endl;
-  std::cout << "succ " << lm_state_id_2 << std::endl;
-
   // remove hardcoded numbers
   double obj_norm_rpy = m_param_catalog.m_robot_resolution_params.num_rpy_angles - 1;
   double base_norm_yaw = m_param_catalog.m_robot_resolution_params.num_base_angles - 1;
@@ -507,8 +505,6 @@ Eigen::MatrixXd Environment::GetFeatureVector(int lm_state_id_1, int lm_state_id
   GraphStatePtr lm_state_succ = m_hash_mgr->getGraphState(lm_state_id_2);
   GraphStatePtr start_state = m_hash_mgr->getGraphState(START_STATE);
   GraphStatePtr goal_state = m_hash_mgr->getGraphState(GOAL_STATE);
-
-  std::cout << "Got my states" << std::endl;
 
   Eigen::MatrixXd feature(22,1);
 
@@ -582,15 +578,6 @@ std::vector<double> Environment::GetSoftmaxProbs(int sourceStateID, std::vector<
     }
   }
 
-  // double sum = std::accumulate(wt.begin(), wt.end(), 0.0);
-
-  // if(sum != 0.0){
-  //   for(int i = 0; i < wt.size(); i++)
-  //   { 
-  //     wt[i] /= sum;
-  //   }
-  // }
-
   return wt;
 }
 
@@ -599,42 +586,21 @@ Eigen::MatrixXd Environment::GetGradient(int state_id, int action_id, int cum_re
   std::vector<int> succ_ids = m_succ_map[state_id];
   std::vector<double> probs = m_prob_map[state_id];
 
-  std::cout << "Got my succ and probs" << std::endl;
-
-  std::cout << "Action " << action_id << std::endl;
-  std::cout << "State id " << state_id << std::endl;
-  std::cout << "Succ size " << succ_ids.size() << std::endl;
-  std::cout << "Map size " << m_succ_map.size() << std::endl;
-
-  auto it = m_succ_map.find(state_id);
-  if(it == m_succ_map.end()){
-    ROS_INFO("Strangest thing ever");
-  }
-
-  auto ch_feature = GetFeatureVector(state_id, succ_ids[action_id]);
-  
-  std::cout << "Got my feature" << std::endl;
+  auto ch_feature = GetFeatureVector(state_id, succ_ids[action_id]);  
 
   double sum_probs = std::accumulate(probs.begin(), probs.end(), 0.0);
   
   Eigen::MatrixXd sum_ft_probs = Eigen::MatrixXd::Zero(ch_feature.rows(), ch_feature.cols());
-  for(int i = 0; i < probs.size(); i++){    
+  for(int i = 0; i < probs.size(); i++){
+    
+    if(succ_ids[i] == state_id)
+      continue;    
+    
     auto ft = GetFeatureVector(state_id, succ_ids[i]);
     sum_ft_probs += probs[i]*ft;
   }
 
-
-  // std::cout << "Chosen feature" << ch_feature << std::endl;
-  // std::cout << "Sum ft probs" << sum_ft_probs << std::endl;
-
-  // std::cout << "Cum reward" << cum_reward << std::endl;
-  // std::cout << "Sum probs" << sum_probs << std::endl;
-
-  Eigen::MatrixXd grad = (cum_reward/sum_probs)*(ch_feature - sum_ft_probs);
-
-  // std::cout << "Grad" << grad << std::endl;
-
-  // getchar();
+  Eigen::MatrixXd grad = 0.001*(cum_reward/sum_probs)*(ch_feature - sum_ft_probs);
 
   return grad;
 }
@@ -751,7 +717,6 @@ void Environment::GetSuccs(int q_id, int sourceStateID, vector<int>* succIDs,
 
       int heur = GetGoalHeuristic(sourceStateID);
       ROS_WARN("Search at a Local minima : source is %d minimum is %d", heur, m_min_heur);
-      // getchar();
 
       for(int i = 0; i < m_num_trajs; i++){
         m_trajectories.push_back(GenerateTraj(sourceStateID));

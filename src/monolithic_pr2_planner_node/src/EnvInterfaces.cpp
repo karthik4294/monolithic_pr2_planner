@@ -457,7 +457,7 @@ bool EnvInterfaces::runARAPlanner(int planner_type,
                                   GetMobileArmPlan::Request &req,
                                   GetMobileArmPlan::Response &res,
                                   SearchRequestParamsPtr search_request,
-                                  int counter) {
+                                  int counter, Eigen::MatrixXd &theta) {
   // std::cin.get();
   int start_id, goal_id;
   bool return_first_soln = true;
@@ -469,8 +469,6 @@ bool EnvInterfaces::runARAPlanner(int planner_type,
   vector<FullBodyState> states;
 
   ros::NodeHandle ph("~");
-
-  Eigen::MatrixXd theta = Eigen::MatrixXd::Zero(22, 1);
 
   printf("\n");
   ROS_INFO("Initialize environment");
@@ -634,15 +632,8 @@ bool EnvInterfaces::planPathCallback(GetMobileArmPlan::Request &req,
   double total_planning_time = clock();
   bool forward_search = true;
   
-  if(req.planner_type != -1)
-  {
-    isPlanFound = runMHAPlanner(monolithic_pr2_planner::T_SMHA, "smha_", req, res,
-                                search_request, counter);
-  }
-  else{
-    isPlanFound = runARAPlanner(monolithic_pr2_planner::T_ARA, "ara_", req, res,
+  isPlanFound = runMHAPlanner(monolithic_pr2_planner::T_SMHA, "smha_", req, res,
                               search_request, counter);
-  }
 
   counter++;
   return true;
@@ -652,73 +643,74 @@ bool EnvInterfaces::planRandomPathsCallback(GetMobileArmPlan::Request &req,
                                      GetMobileArmPlan::Response &res) {
   boost::unique_lock<boost::mutex> lock(mutex);
 
+  Eigen::MatrixXd theta = Eigen::MatrixXd::Zero(22, 1);
+
   vector<pair<RobotState, RobotState>> start_goal_pairs;
+  m_generator->generateUniformPairs(10, start_goal_pairs);
 
-  // m_generator->initializeRegions();
-  m_generator->generateUniformPairs(1, start_goal_pairs);
+  for(auto start_goal : start_goal_pairs){  
 
-  auto start_goal = start_goal_pairs[0];  
+    SearchRequestParamsPtr search_request = make_shared<SearchRequestParams>();
 
-  SearchRequestParamsPtr search_request = make_shared<SearchRequestParams>();
+    search_request->initial_epsilon = req.initial_eps;
+    search_request->final_epsilon = req.final_eps;
+    search_request->decrement_epsilon = req.dec_eps;    
+    search_request->base_start = start_goal.first.base_state();
+    search_request->base_goal = start_goal.second.base_state();
+    search_request->left_arm_start = start_goal.first.left_arm();
+    search_request->right_arm_start = start_goal.first.right_arm();
+    search_request->left_arm_goal = start_goal.second.left_arm();
+    search_request->right_arm_goal = start_goal.second.right_arm();
+    search_request->obj_start = start_goal.first.getObjectStateRelMap();
+    search_request->obj_goal = start_goal.second.getObjectStateRelMap();
 
-  search_request->initial_epsilon = req.initial_eps;
-  search_request->final_epsilon = req.final_eps;
-  search_request->decrement_epsilon = req.dec_eps;    
-  search_request->base_start = start_goal.first.base_state();
-  search_request->base_goal = start_goal.second.base_state();
-  search_request->left_arm_start = start_goal.first.left_arm();
-  search_request->right_arm_start = start_goal.first.right_arm();
-  search_request->left_arm_goal = start_goal.second.left_arm();
-  search_request->right_arm_goal = start_goal.second.right_arm();
-  search_request->obj_start = start_goal.first.getObjectStateRelMap();
-  search_request->obj_goal = start_goal.second.getObjectStateRelMap();
+    KDL::Frame rarm_offset, larm_offset;
+    rarm_offset.p.x(req.rarm_object.pose.position.x);
+    rarm_offset.p.y(req.rarm_object.pose.position.y);
+    rarm_offset.p.z(req.rarm_object.pose.position.z);
+    larm_offset.p.x(req.larm_object.pose.position.x);
+    larm_offset.p.y(req.larm_object.pose.position.y);
+    larm_offset.p.z(req.larm_object.pose.position.z);
 
-  KDL::Frame rarm_offset, larm_offset;
-  rarm_offset.p.x(req.rarm_object.pose.position.x);
-  rarm_offset.p.y(req.rarm_object.pose.position.y);
-  rarm_offset.p.z(req.rarm_object.pose.position.z);
-  larm_offset.p.x(req.larm_object.pose.position.x);
-  larm_offset.p.y(req.larm_object.pose.position.y);
-  larm_offset.p.z(req.larm_object.pose.position.z);
+    rarm_offset.M = Rotation::Quaternion(
+                      req.rarm_object.pose.orientation.x,
+                      req.rarm_object.pose.orientation.y,
+                      req.rarm_object.pose.orientation.z,
+                      req.rarm_object.pose.orientation.w);
+    larm_offset.M = Rotation::Quaternion(
+                      req.larm_object.pose.orientation.x,
+                      req.larm_object.pose.orientation.y,
+                      req.larm_object.pose.orientation.z,
+                      req.larm_object.pose.orientation.w);
+    search_request->left_arm_object = larm_offset;
+    search_request->right_arm_object = rarm_offset;
+    search_request->xyz_tolerance = req.xyz_tolerance;
+    search_request->roll_tolerance = req.roll_tolerance;
+    search_request->pitch_tolerance = req.pitch_tolerance;
+    search_request->yaw_tolerance = req.yaw_tolerance;
+    search_request->planning_mode = req.planning_mode;
 
-  rarm_offset.M = Rotation::Quaternion(
-                    req.rarm_object.pose.orientation.x,
-                    req.rarm_object.pose.orientation.y,
-                    req.rarm_object.pose.orientation.z,
-                    req.rarm_object.pose.orientation.w);
-  larm_offset.M = Rotation::Quaternion(
-                    req.larm_object.pose.orientation.x,
-                    req.larm_object.pose.orientation.y,
-                    req.larm_object.pose.orientation.z,
-                    req.larm_object.pose.orientation.w);
-  search_request->left_arm_object = larm_offset;
-  search_request->right_arm_object = rarm_offset;
-  search_request->xyz_tolerance = req.xyz_tolerance;
-  search_request->roll_tolerance = req.roll_tolerance;
-  search_request->pitch_tolerance = req.pitch_tolerance;
-  search_request->yaw_tolerance = req.yaw_tolerance;
-  search_request->planning_mode = req.planning_mode;
+    res.stats_field_names.resize(18);
+    res.stats.resize(18);
+    int start_id, goal_id;
+    static int counter = 0;
+    bool isPlanFound;
 
-  res.stats_field_names.resize(18);
-  res.stats.resize(18);
-  int start_id, goal_id;
-  static int counter = 0;
-  bool isPlanFound;
-
-  double total_planning_time = clock();
-  bool forward_search = true;
-  
-  if(req.planner_type != -1)
-  {
-    isPlanFound = runMHAPlanner(monolithic_pr2_planner::T_SMHA, "smha_", req, res,
-                                search_request, counter);
+    double total_planning_time = clock();
+    bool forward_search = true;
+    
+    if(req.planner_type != -1)
+    {
+      isPlanFound = runMHAPlanner(monolithic_pr2_planner::T_SMHA, "smha_", req, res,
+                                  search_request, counter);
+    }
+    else{
+      isPlanFound = runARAPlanner(monolithic_pr2_planner::T_ARA, "ara_", req, res,
+                                search_request, counter, theta);
+    }
+    counter++;
   }
-  else{
-    isPlanFound = runARAPlanner(monolithic_pr2_planner::T_ARA, "ara_", req, res,
-                              search_request, counter);
-  }
 
-  counter++;
   return true;
 }
 

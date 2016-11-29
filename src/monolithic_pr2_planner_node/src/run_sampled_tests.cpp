@@ -54,16 +54,11 @@ int main(int argc, char** argv){
   req.larm_object.pose.orientation.z = 0;
   req.larm_object.pose.orientation.w = 1;
 
-  int num_trials = 2;
+  ros::service::waitForService("/sbpl_planning/plan_path",10);
+  ros::ServiceClient planner = nh.serviceClient<monolithic_pr2_planner_node::GetMobileArmPlan>("/sbpl_planning/plan_path", true);
+  sleep(1);
 
-  for(int i = 0; i < num_trials; i++){
-
-    ros::service::waitForService("/sbpl_planning/plan_path",10);
-    ros::ServiceClient planner = ros::NodeHandle().serviceClient<monolithic_pr2_planner_node::GetMobileArmPlan>("/sbpl_planning/plan_path", true);
-    sleep(1);
-
-    planner.call(req,res);
-  }
+  planner.call(req,res);
 
   return 0;
 }

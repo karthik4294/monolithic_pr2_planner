@@ -82,7 +82,7 @@ namespace monolithic_pr2_planner_node {
                   GetMobileArmPlan::Request &req,
                   GetMobileArmPlan::Response &res,
                   monolithic_pr2_planner::SearchRequestParamsPtr search_request,
-                  int counter);
+                  int counter, Eigen::MatrixXd &theta);
             void getRobotState(tf::TransformListener &tf_, BodyPose &body_pos, std::vector<double> &rangles, std::vector<double>
               &langles);
             double getJointAngle(std::string name, sensor_msgs::JointStateConstPtr
