@@ -623,8 +623,25 @@ void Environment::UpdateTheta(Eigen::MatrixXd &theta){
   
   Eigen::MatrixXd grad = Eigen::MatrixXd::Zero(theta.rows(), theta.cols());
 
-  for(auto traj : m_trajectories)
+  int num_traj = m_trajectories.size();
+
+  std::random_device rd;
+  std::mt19937 generator(rd()); 
+  std::uniform_int_distribution<int> distribution(0,num_traj-1);
+
+  int num_sampled_traj = num_traj/3;
+  std::vector<int> sampled_traj_ind;
+  for(int i = 0 ; i < num_sampled_traj; i++){
+    int num = distribution(generator);
+    if(std::find(sampled_traj_ind.begin(), sampled_traj_ind.end(), num) == sampled_traj_ind.end()) {
+      sampled_traj_ind.push_back(num);
+    }
+  }
+
+  for(int j = 0; j < sampled_traj_ind.size(); j++)
   {
+    int ind = sampled_traj_ind[j];
+    auto traj = m_trajectories[ind];
     std::vector<int>  traj_ids = traj.traj_ids;
     std::vector<int>  action_ids = traj.action_ids;
     std::vector<double>  cum_rewards = traj.cum_rewards;
