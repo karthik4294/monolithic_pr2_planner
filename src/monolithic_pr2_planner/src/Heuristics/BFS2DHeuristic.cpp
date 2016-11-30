@@ -68,7 +68,7 @@ void BFS2DHeuristic::setGoal(GoalState& goal_state){
     std::vector<std::pair<int,int> > init_points;
     double res = m_occupancy_grid->getResolution();
     int discrete_radius = m_radius/res;
-    getBresenhamCirclePoints(state.x(), state.y(), discrete_radius, init_points);
+    // getBresenhamCirclePoints(state.x(), state.y(), discrete_radius, init_points);
 
     // Set the goal state to 0,0 - just make sure it's not the start state.
     m_gridsearch->search(m_grid, costmap_2d::INSCRIBED_INFLATED_OBSTACLE, state.x(), state.y(),

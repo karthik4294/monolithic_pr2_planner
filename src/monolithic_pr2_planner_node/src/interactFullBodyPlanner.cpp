@@ -304,7 +304,7 @@ void ControlPlanner::processFeedback(const visualization_msgs::InteractiveMarker
       ik_pose[5] = q_hand.getZ();
       ik_pose[6] = q_hand.getW();
 
-      printf("dx %f dy %f base yaw %f ikpose x %f y %f z %f\n", dx, dy, base_yaw, ik_pose[0], ik_pose[1], ik_pose[2]);
+      // printf("dx %f dy %f base yaw %f ikpose x %f y %f z %f\n", dx, dy, base_yaw, ik_pose[0], ik_pose[1], ik_pose[2]);
       
       visualization_msgs::InteractiveMarker r_gripper_marker;
       string gripper_name( is_start ? "start_hand" : "goal_hand" );

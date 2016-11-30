@@ -34,7 +34,8 @@ namespace monolithic_pr2_planner {
     struct Trajectory{
         std::vector<int> traj_ids;
         std::vector<int> action_ids;
-        std::vector<int> cum_rewards;
+        std::vector<double> cum_rewards;
+        bool contain;
     };
 
     typedef std::pair<int, int> Edge;
@@ -67,7 +68,7 @@ namespace monolithic_pr2_planner {
             std::discrete_distribution<> GetDistribution(std::vector<double> p);
             Eigen::MatrixXd GetFeatureVector(int lm_state_id_1, int lm_state_id_2);
             std::vector<double> GetSoftmaxProbs(int sourceStateID, std::vector<int> succ_ids);
-            Eigen::MatrixXd GetGradient(int state_id, int action_id, int cum_reward);
+            Eigen::MatrixXd GetGradient(int state_id, int action_id, double cum_reward);
             void UpdateTheta(Eigen::MatrixXd &theta);
 
         protected:
@@ -95,6 +96,7 @@ namespace monolithic_pr2_planner {
             int m_num_trajs;
             int m_traj_ts;
             double m_alpha;
+            double max_dh;
             Eigen::MatrixXd m_theta;
             
             std::vector<Trajectory> m_trajectories;

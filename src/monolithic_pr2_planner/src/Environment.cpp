@@ -26,9 +26,10 @@ Environment::Environment(ros::NodeHandle nh, bool learn_phase)
         m_planner_type(T_SMHA),
         m_min_heur(INFINITECOST),
         m_learn_phase(learn_phase),
-        m_num_trajs(1),
-        m_traj_ts(100),
-        m_alpha(0.05){
+        m_num_trajs(25),
+        m_traj_ts(10000),
+        m_alpha(0.01),
+        max_dh(0.0){
         m_param_catalog.fetch(nh);
         configurePlanningDomain();
 }
@@ -345,12 +346,15 @@ std::discrete_distribution<> Environment::GetDistribution(std::vector<double> p)
 
 Trajectory Environment::GenerateTraj(int sourceStateID){
 
-  // Graphs states for source and succs
+  // the trajectory object
+  Trajectory traj;
+
+    // Graphs states for source and succs
   // and their heurs
   GraphStatePtr source_state, successor;
   int parent_heur, succ_heur;
-  std::vector<int> drop_heur;
-  double cum_drop_heur;
+  std::vector<double> drop_heur;
+  double cum_drop_heur = 0.0;
 
   // vector of probs  
   std::vector<double> probs;
@@ -360,9 +364,9 @@ Trajectory Environment::GenerateTraj(int sourceStateID){
 
   // storing trajectory ids, their succs
   // and actions
-  std::vector<int> traj_ids;
-  std::vector<int> action_ids;
-  std::vector<int> cum_rewards;
+  std::vector<int> traj_ids(0);
+  std::vector<int> action_ids(0);
+  std::vector<double> cum_rewards(0);
 
   // Succ ids of each state
   std::vector<int> succ_ids;
@@ -383,13 +387,14 @@ Trajectory Environment::GenerateTraj(int sourceStateID){
   while(t < m_traj_ts){
     t++;
 
+    ROS_INFO("t is %d",t);
+
     // Every time we see a new state, initialise 
     // all actions and their probs based on 
     // softmax
     if(new_state)
     { 
       source_state = m_hash_mgr->getGraphState(parent_id);
-      
       auto it = m_succ_map.find(parent_id);
       if (it == m_succ_map.end())
       {
@@ -422,6 +427,7 @@ Trajectory Environment::GenerateTraj(int sourceStateID){
     int num = distribution(generator);
 
     if(succ_ids[num] == parent_id){
+      ROS_WARN("Choosing action of zero probabiity!!Craaaaaaazzzzzy");
       continue;
     }
 
@@ -465,8 +471,11 @@ Trajectory Environment::GenerateTraj(int sourceStateID){
     // Save the new state id, drop in heur
     // the action, and probs
     traj_ids.push_back(successor->id());
-    drop_heur.push_back(cum_drop_heur + parent_heur - succ_heur);
-    cum_drop_heur += (parent_heur - succ_heur);
+
+    double dh = (double)(parent_heur - succ_heur);
+    drop_heur.push_back(cum_drop_heur + dh);
+    cum_drop_heur += dh;
+
     action_ids.push_back(num);
 
     // Moving on to next state in trajectory gen
@@ -474,18 +483,22 @@ Trajectory Environment::GenerateTraj(int sourceStateID){
     succ_ids.clear();
     new_state = true;
 
-    ROS_INFO("t is %d",t);
   }
 
-  cum_rewards.push_back(cum_drop_heur);
+  if(action_ids.size() != 0){
+    cum_rewards.push_back(cum_drop_heur);
 
-  for(int i = 0; i < (drop_heur.size() - 1); i++)
-    cum_rewards.push_back( (cum_drop_heur - drop_heur[i]) );
+    for(int i = 0; i < (drop_heur.size() - 1); i++)
+      cum_rewards.push_back( (cum_drop_heur - drop_heur[i]) );
 
-  Trajectory traj;
-  traj.traj_ids = traj_ids;
-  traj.action_ids = action_ids;
-  traj.cum_rewards = cum_rewards;
+    traj.traj_ids = traj_ids;
+    traj.action_ids = action_ids;
+    traj.cum_rewards = cum_rewards;
+    traj.contain = true;
+  }
+  else{
+    traj.contain = false;
+  }
 
   return traj;
 }
@@ -564,7 +577,7 @@ std::vector<double> Environment::GetSoftmaxProbs(int sourceStateID, std::vector<
     Eigen::MatrixXd tf = (m_theta.transpose())*GetFeatureVector(sourceStateID, succ_ids[i]);
     wt[i] = tf(0,0);
 
-    if(wt[i] > max_wt)
+    if(wt[i] > max_wt && (succ_ids[i] != sourceStateID))
       max_wt = wt[i];
   }
 
@@ -581,7 +594,7 @@ std::vector<double> Environment::GetSoftmaxProbs(int sourceStateID, std::vector<
   return wt;
 }
 
-Eigen::MatrixXd Environment::GetGradient(int state_id, int action_id, int cum_reward){
+Eigen::MatrixXd Environment::GetGradient(int state_id, int action_id, double cum_reward){
   
   std::vector<int> succ_ids = m_succ_map[state_id];
   std::vector<double> probs = m_prob_map[state_id];
@@ -591,6 +604,7 @@ Eigen::MatrixXd Environment::GetGradient(int state_id, int action_id, int cum_re
   double sum_probs = std::accumulate(probs.begin(), probs.end(), 0.0);
   
   Eigen::MatrixXd sum_ft_probs = Eigen::MatrixXd::Zero(ch_feature.rows(), ch_feature.cols());
+
   for(int i = 0; i < probs.size(); i++){
     
     if(succ_ids[i] == state_id)
@@ -600,7 +614,7 @@ Eigen::MatrixXd Environment::GetGradient(int state_id, int action_id, int cum_re
     sum_ft_probs += probs[i]*ft;
   }
 
-  Eigen::MatrixXd grad = 0.001*(cum_reward/sum_probs)*(ch_feature - sum_ft_probs);
+  Eigen::MatrixXd grad = (cum_reward/sum_probs)*(ch_feature - sum_ft_probs);
 
   return grad;
 }
@@ -613,7 +627,7 @@ void Environment::UpdateTheta(Eigen::MatrixXd &theta){
   {
     std::vector<int>  traj_ids = traj.traj_ids;
     std::vector<int>  action_ids = traj.action_ids;
-    std::vector<int>  cum_rewards = traj.cum_rewards;
+    std::vector<double>  cum_rewards = traj.cum_rewards;
 
     for(int i = 0; i < action_ids.size(); i++)
     {
@@ -719,7 +733,10 @@ void Environment::GetSuccs(int q_id, int sourceStateID, vector<int>* succIDs,
       ROS_WARN("Search at a Local minima : source is %d minimum is %d", heur, m_min_heur);
 
       for(int i = 0; i < m_num_trajs; i++){
-        m_trajectories.push_back(GenerateTraj(sourceStateID));
+        Trajectory traj = GenerateTraj(sourceStateID);
+        if(traj.contain){
+          m_trajectories.push_back(traj);
+        }
       }
 
     }
