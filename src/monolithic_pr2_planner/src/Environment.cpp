@@ -519,7 +519,7 @@ Eigen::MatrixXd Environment::GetFeatureVector(int lm_state_id_1, int lm_state_id
   GraphStatePtr start_state = m_hash_mgr->getGraphState(START_STATE);
   GraphStatePtr goal_state = m_hash_mgr->getGraphState(GOAL_STATE);
 
-  Eigen::MatrixXd feature(22,1);
+  Eigen::MatrixXd feature(33,1);
 
   feature(0, 0) = ((double)lm_state->obj_x()/obj_norm_xyz);
   feature(1, 0) = ((double)lm_state->obj_y()/obj_norm_xyz);
@@ -545,17 +545,17 @@ Eigen::MatrixXd Environment::GetFeatureVector(int lm_state_id_1, int lm_state_id
   feature(20, 0) = ((double)lm_state_succ->base_y()/base_norm_y);
   feature(21, 0) = ((double)lm_state_succ->base_theta()/base_norm_yaw);
 
-  // feature(22, 0) = (start_state->obj_x());
-  // feature(23, 0) = (start_state->obj_y());
-  // feature(24, 0) = (start_state->obj_z());
-  // feature(25, 0) = (start_state->obj_roll());
-  // feature(26, 0) = (start_state->obj_pitch());
-  // feature(27, 0) = (start_state->obj_yaw());
-  // feature(28, 0) = (start_state->obj_right_fa());
-  // feature(29, 0) = (start_state->obj_left_fa());
-  // feature(30, 0) = (start_state->base_x());
-  // feature(31, 0) = (start_state->base_y());
-  // feature(32, 0) = (start_state->base_theta());
+  feature(22, 0) = ((double)goal_state->obj_x()/obj_norm_xyz);
+  feature(23, 0) = ((double)goal_state->obj_y()/obj_norm_xyz);
+  feature(24, 0) = ((double)goal_state->obj_z()/obj_norm_xyz);
+  feature(25, 0) = ((double)goal_state->obj_roll()/obj_norm_rpy);
+  feature(26, 0) = ((double)goal_state->obj_pitch()/obj_norm_rpy);
+  feature(27, 0) = ((double)goal_state->obj_yaw()/obj_norm_rpy);
+  feature(28, 0) = ((double)goal_state->obj_right_fa()/obj_norm_fa);
+  feature(29, 0) = ((double)goal_state->obj_left_fa()/obj_norm_fa);
+  feature(30, 0) = ((double)goal_state->base_x()/base_norm_x);
+  feature(31, 0) = ((double)goal_state->base_y()/base_norm_y);
+  feature(32, 0) = ((double)goal_state->base_theta()/base_norm_yaw);
 
   // feature(33, 0) = (goal_state->obj_x());
   // feature(34, 0) = (goal_state->obj_y());
