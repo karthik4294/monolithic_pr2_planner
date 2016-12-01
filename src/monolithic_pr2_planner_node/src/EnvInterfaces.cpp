@@ -643,7 +643,7 @@ bool EnvInterfaces::planRandomPathsCallback(GetMobileArmPlan::Request &req,
                                      GetMobileArmPlan::Response &res) {
   boost::unique_lock<boost::mutex> lock(mutex);
 
-  Eigen::MatrixXd theta = Eigen::MatrixXd::Zero(33, 1);
+  Eigen::MatrixXd theta = Eigen::MatrixXd::Zero(28, 1);
 
   vector<pair<RobotState, RobotState>> start_goal_pairs;
   m_generator->generateUniformPairs(10, start_goal_pairs);
