@@ -27,7 +27,7 @@ Environment::Environment(ros::NodeHandle nh, bool learn_phase)
         m_min_heur(INFINITECOST),
         m_learn_phase(learn_phase),
         m_num_trajs(25),
-        m_traj_ts(10000),
+        m_traj_ts(100),
         m_alpha(0.01),
         max_dh(0.0){
         m_param_catalog.fetch(nh);
@@ -472,7 +472,7 @@ Trajectory Environment::GenerateTraj(int sourceStateID){
     // the action, and probs
     traj_ids.push_back(successor->id());
 
-    double dh = (double)(parent_heur - succ_heur);
+    double dh = (double)(parent_heur - succ_heur)/1000.0;
     drop_heur.push_back(cum_drop_heur + dh);
     cum_drop_heur += dh;
 
@@ -621,6 +621,9 @@ Eigen::MatrixXd Environment::GetGradient(int state_id, int action_id, double cum
 
 void Environment::UpdateTheta(Eigen::MatrixXd &theta){
   
+  if(m_trajectories.size() == 0)
+    return;
+
   Eigen::MatrixXd grad = Eigen::MatrixXd::Zero(theta.rows(), theta.cols());
 
   int num_traj = m_trajectories.size();
@@ -630,9 +633,18 @@ void Environment::UpdateTheta(Eigen::MatrixXd &theta){
   std::uniform_int_distribution<int> distribution(0,num_traj-1);
 
   int num_sampled_traj = num_traj/3;
+
+  if(num_sampled_traj == 0)
+    return;
+
   std::vector<int> sampled_traj_ind;
-  for(int i = 0 ; i < num_sampled_traj; i++){
+  for(int i = 0 ; ; i++){
+    
+    if(sampled_traj_ind.size() == num_sampled_traj)
+      break;
+
     int num = distribution(generator);
+
     if(std::find(sampled_traj_ind.begin(), sampled_traj_ind.end(), num) == sampled_traj_ind.end()) {
       sampled_traj_ind.push_back(num);
     }
