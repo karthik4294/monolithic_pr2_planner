@@ -29,7 +29,7 @@ Environment::Environment(ros::NodeHandle nh, bool learn_phase)
         m_num_trajs(25),
         m_traj_ts(100),
         m_alpha(0.01),
-        max_dh(0.0){
+        m_explr(0.7){
         m_param_catalog.fetch(nh);
         configurePlanningDomain();
 }
@@ -381,6 +381,8 @@ Trajectory Environment::GenerateTraj(int sourceStateID){
   int parent_id = sourceStateID;
   size_t prim_size = (m_mprims.getMotionPrims()).size();
   
+  int min_h_succ;
+
   traj_ids.push_back(parent_id);  
   bool new_state = true;
 
@@ -394,6 +396,7 @@ Trajectory Environment::GenerateTraj(int sourceStateID){
     // softmax
     if(new_state)
     { 
+      int min_h = 10000000;
       source_state = m_hash_mgr->getGraphState(parent_id);
       auto it = m_succ_map.find(parent_id);
       if (it == m_succ_map.end())
@@ -408,6 +411,12 @@ Trajectory Environment::GenerateTraj(int sourceStateID){
           else{
             m_hash_mgr->save(succ);
             succ_ids.push_back(succ->id());
+            int s_h = GetGoalHeuristic(succ->id());
+            if (s_h < min_h)
+            {
+              min_h = s_h;
+              min_h_succ = i;
+            } 
           }
         }
         probs = GetSoftmaxProbs(parent_id, succ_ids);
@@ -424,7 +433,19 @@ Trajectory Environment::GenerateTraj(int sourceStateID){
     }     
 
     // Pick action from the distribution
-    int num = distribution(generator);
+    // or from min heuristic
+    int num;
+    double rn = ((double) rand() / (RAND_MAX));
+
+    if(rn < m_explr)
+    {
+      num = distribution(generator);
+      ROS_INFO("Chosen an action from the distribution");
+    }
+    else{
+      num = min_h_succ;
+      ROS_INFO("Choosing the min heuristic succ action");
+    }
 
     if(succ_ids[num] == parent_id){
       ROS_WARN("Choosing action of zero probabiity!!Craaaaaaazzzzzy");

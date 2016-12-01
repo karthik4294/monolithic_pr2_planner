@@ -96,7 +96,7 @@ namespace monolithic_pr2_planner {
             int m_num_trajs;
             int m_traj_ts;
             double m_alpha;
-            double max_dh;
+            double m_explr;
             Eigen::MatrixXd m_theta;
             
             std::vector<Trajectory> m_trajectories;
