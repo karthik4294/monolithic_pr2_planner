@@ -535,7 +535,7 @@ Eigen::MatrixXd Environment::GetFeatureVector(int lm_state_id_1, int lm_state_id
   GraphStatePtr start_state = m_hash_mgr->getGraphState(START_STATE);
   GraphStatePtr goal_state = m_hash_mgr->getGraphState(GOAL_STATE);
 
-  Eigen::MatrixXd feature(33,1);
+  Eigen::MatrixXd feature(28,1);
 
   feature(0, 0) = ((double)lm_state->obj_x()/obj_norm_xyz);
   feature(1, 0) = ((double)lm_state->obj_y()/obj_norm_xyz);
@@ -561,17 +561,15 @@ Eigen::MatrixXd Environment::GetFeatureVector(int lm_state_id_1, int lm_state_id
   feature(20, 0) = ((double)lm_state_succ->base_y()/base_norm_y);
   feature(21, 0) = ((double)lm_state_succ->base_theta()/base_norm_yaw);
 
-  feature(22, 0) = ((double)goal_state->obj_x()/obj_norm_xyz);
-  feature(23, 0) = ((double)goal_state->obj_y()/obj_norm_xyz);
-  feature(24, 0) = ((double)goal_state->obj_z()/obj_norm_xyz);
-  feature(25, 0) = ((double)goal_state->obj_roll()/obj_norm_rpy);
-  feature(26, 0) = ((double)goal_state->obj_pitch()/obj_norm_rpy);
-  feature(27, 0) = ((double)goal_state->obj_yaw()/obj_norm_rpy);
-  feature(28, 0) = ((double)goal_state->obj_right_fa()/obj_norm_fa);
-  feature(29, 0) = ((double)goal_state->obj_left_fa()/obj_norm_fa);
-  feature(30, 0) = ((double)goal_state->base_x()/base_norm_x);
-  feature(31, 0) = ((double)goal_state->base_y()/base_norm_y);
-  feature(32, 0) = ((double)goal_state->base_theta()/base_norm_yaw);
+  feature(22, 0) = ((double)(m_goal->getObjectState()).x()/base_norm_x); // rel to map
+  feature(23, 0) = ((double)(m_goal->getObjectState()).y()/base_norm_y); // rel to map
+  feature(24, 0) = ((double)(m_goal->getObjectState()).z()/base_norm_z); // rel to map
+  feature(25, 0) = ((double)(m_goal->getObjectState()).roll()/obj_norm_rpy);
+  feature(26, 0) = ((double)(m_goal->getObjectState()).pitch()/obj_norm_rpy);
+  feature(27, 0) = ((double)(m_goal->getObjectState()).yaw()/obj_norm_rpy);
+
+  std::cout << feature << std::endl;
+  getchar();
 
   // feature(33, 0) = (goal_state->obj_x());
   // feature(34, 0) = (goal_state->obj_y());
@@ -673,11 +671,14 @@ void Environment::UpdateTheta(Eigen::MatrixXd &theta){
     std::vector<int>  traj_ids = traj.traj_ids;
     std::vector<int>  action_ids = traj.action_ids;
     std::vector<double>  cum_rewards = traj.cum_rewards;
+    Eigen::MatrixXd temp_grad = Eigen::MatrixXd::Zero(theta.rows(), theta.cols());
 
     for(int i = 0; i < action_ids.size(); i++)
     {
-      grad += GetGradient(traj_ids[i], action_ids[i], cum_rewards[i]);
+      temp_grad += GetGradient(traj_ids[i], action_ids[i], cum_rewards[i]);
     }
+
+    grad += temp_grad/(action_ids.size());
   }  
 
   theta = m_theta + m_alpha*grad;  
