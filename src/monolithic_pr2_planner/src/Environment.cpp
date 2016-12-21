@@ -27,9 +27,9 @@ Environment::Environment(ros::NodeHandle nh, bool learn_phase)
         m_min_heur(INFINITECOST),
         m_learn_phase(learn_phase),
         m_num_trajs(25),
-        m_traj_ts(100),
+        m_traj_ts(10000),
         m_alpha(0.01),
-        m_explr(0.7){
+        m_explr(1.0){
         m_param_catalog.fetch(nh);
         configurePlanningDomain();
 }
@@ -349,7 +349,7 @@ Trajectory Environment::GenerateTraj(int sourceStateID){
   // the trajectory object
   Trajectory traj;
 
-    // Graphs states for source and succs
+  // Graphs states for source and succs
   // and their heurs
   GraphStatePtr source_state, successor;
   int parent_heur, succ_heur;
@@ -358,9 +358,6 @@ Trajectory Environment::GenerateTraj(int sourceStateID){
 
   // vector of probs  
   std::vector<double> probs;
-
-  // policy gradient along the traj
-  std::vector<double> p_gradient;
 
   // storing trajectory ids, their succs
   // and actions
@@ -493,9 +490,8 @@ Trajectory Environment::GenerateTraj(int sourceStateID){
     // the action, and probs
     traj_ids.push_back(successor->id());
 
-    double dh = (double)(parent_heur - succ_heur)/1000.0;
-    drop_heur.push_back(cum_drop_heur + dh);
-    cum_drop_heur += dh;
+    cum_drop_heur += (double)(parent_heur - succ_heur)/100.0;
+    drop_heur.push_back(cum_drop_heur);
 
     action_ids.push_back(num);
 
@@ -503,7 +499,6 @@ Trajectory Environment::GenerateTraj(int sourceStateID){
     parent_id = successor->id();
     succ_ids.clear();
     new_state = true;
-
   }
 
   if(action_ids.size() != 0){
@@ -590,7 +585,7 @@ Eigen::MatrixXd Environment::GetFeatureVector(int lm_state_id_1, int lm_state_id
 
 std::vector<double> Environment::GetSoftmaxProbs(int sourceStateID, std::vector<int> succ_ids){
 
-  double max_wt = 0.0;
+  double max_wt = -100000.0;
   std::vector<double> wt(succ_ids.size(), 0.0);
 
   for(int i = 0; i < succ_ids.size(); i++){
@@ -635,7 +630,7 @@ Eigen::MatrixXd Environment::GetGradient(int state_id, int action_id, double cum
     sum_ft_probs += probs[i]*ft;
   }
 
-  Eigen::MatrixXd grad = (cum_reward/sum_probs)*(ch_feature - sum_ft_probs);
+  Eigen::MatrixXd grad = (cum_reward/sum_probs)*((sum_probs*ch_feature) - sum_ft_probs);
 
   return grad;
 }

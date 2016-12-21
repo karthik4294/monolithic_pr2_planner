@@ -135,12 +135,12 @@ void ControlPlanner::processFeedback(const visualization_msgs::InteractiveMarker
       req.roll_tolerance = .1;
       req.pitch_tolerance = .1;
       req.yaw_tolerance = .1;
-      req.allocated_planning_time = 90;
+      req.allocated_planning_time = 50;
       req.planning_mode = monolithic_pr2_planner::PlanningModes::RIGHT_ARM_MOBILE;
 
       //planner parameters
-      req.initial_eps = 100.0;
-      req.final_eps = 100.0;
+      req.initial_eps = 50.0;
+      req.final_eps = 50.0;
       req.dec_eps = 0.2;
       printf("plan\n");
 

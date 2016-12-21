@@ -584,58 +584,69 @@ bool EnvInterfaces::planPathCallback(GetMobileArmPlan::Request &req,
                                      GetMobileArmPlan::Response &res) {
   boost::unique_lock<boost::mutex> lock(mutex);
 
-  SearchRequestParamsPtr search_request = make_shared<SearchRequestParams>();
-  search_request->initial_epsilon = req.initial_eps;
-  search_request->final_epsilon = req.final_eps;
-  search_request->decrement_epsilon = req.dec_eps;
-  search_request->base_start = req.body_start;
-  search_request->left_arm_start = LeftContArmState(req.larm_start);
-  search_request->right_arm_start = RightContArmState(req.rarm_start);
-  search_request->underspecified_start = req.underspecified_start;
+  Eigen::MatrixXd theta = Eigen::MatrixXd::Zero(33, 1);
 
-  search_request->base_goal = req.body_goal;
-  search_request->left_arm_goal = LeftContArmState(req.larm_goal);
-  search_request->right_arm_goal = RightContArmState(req.rarm_goal);
+  for(int i = 0; i < 10; i++) {
+    SearchRequestParamsPtr search_request = make_shared<SearchRequestParams>();
+    search_request->initial_epsilon = req.initial_eps;
+    search_request->final_epsilon = req.final_eps;
+    search_request->decrement_epsilon = req.dec_eps;
+    search_request->base_start = req.body_start;
+    search_request->left_arm_start = LeftContArmState(req.larm_start);
+    search_request->right_arm_start = RightContArmState(req.rarm_start);
+    search_request->underspecified_start = req.underspecified_start;
 
-  KDL::Frame rarm_offset, larm_offset;
-  rarm_offset.p.x(req.rarm_object.pose.position.x);
-  rarm_offset.p.y(req.rarm_object.pose.position.y);
-  rarm_offset.p.z(req.rarm_object.pose.position.z);
-  larm_offset.p.x(req.larm_object.pose.position.x);
-  larm_offset.p.y(req.larm_object.pose.position.y);
-  larm_offset.p.z(req.larm_object.pose.position.z);
+    search_request->base_goal = req.body_goal;
+    search_request->left_arm_goal = LeftContArmState(req.larm_goal);
+    search_request->right_arm_goal = RightContArmState(req.rarm_goal);
 
-  rarm_offset.M = Rotation::Quaternion(req.rarm_object.pose.orientation.x,
-                                       req.rarm_object.pose.orientation.y,
-                                       req.rarm_object.pose.orientation.z,
-                                       req.rarm_object.pose.orientation.w);
-  larm_offset.M = Rotation::Quaternion(req.larm_object.pose.orientation.x,
-                                       req.larm_object.pose.orientation.y,
-                                       req.larm_object.pose.orientation.z,
-                                       req.larm_object.pose.orientation.w);
-  search_request->left_arm_object = larm_offset;
-  search_request->right_arm_object = rarm_offset;
-  search_request->xyz_tolerance = req.xyz_tolerance;
-  search_request->roll_tolerance = req.roll_tolerance;
-  search_request->pitch_tolerance = req.pitch_tolerance;
-  search_request->yaw_tolerance = req.yaw_tolerance;
-  search_request->planning_mode = req.planning_mode;
-  search_request->obj_goal = req.goal;
-  search_request->obj_start = req.start;
+    KDL::Frame rarm_offset, larm_offset;
+    rarm_offset.p.x(req.rarm_object.pose.position.x);
+    rarm_offset.p.y(req.rarm_object.pose.position.y);
+    rarm_offset.p.z(req.rarm_object.pose.position.z);
+    larm_offset.p.x(req.larm_object.pose.position.x);
+    larm_offset.p.y(req.larm_object.pose.position.y);
+    larm_offset.p.z(req.larm_object.pose.position.z);
 
-  res.stats_field_names.resize(18);
-  res.stats.resize(18);
-  int start_id, goal_id;
-  static int counter = 0;
-  bool isPlanFound;
+    rarm_offset.M = Rotation::Quaternion(req.rarm_object.pose.orientation.x,
+                                         req.rarm_object.pose.orientation.y,
+                                         req.rarm_object.pose.orientation.z,
+                                         req.rarm_object.pose.orientation.w);
+    larm_offset.M = Rotation::Quaternion(req.larm_object.pose.orientation.x,
+                                         req.larm_object.pose.orientation.y,
+                                         req.larm_object.pose.orientation.z,
+                                         req.larm_object.pose.orientation.w);
+    search_request->left_arm_object = larm_offset;
+    search_request->right_arm_object = rarm_offset;
+    search_request->xyz_tolerance = req.xyz_tolerance;
+    search_request->roll_tolerance = req.roll_tolerance;
+    search_request->pitch_tolerance = req.pitch_tolerance;
+    search_request->yaw_tolerance = req.yaw_tolerance;
+    search_request->planning_mode = req.planning_mode;
+    search_request->obj_goal = req.goal;
+    search_request->obj_start = req.start;
 
-  double total_planning_time = clock();
-  bool forward_search = true;
-  
-  isPlanFound = runMHAPlanner(monolithic_pr2_planner::T_SMHA, "smha_", req, res,
-                              search_request, counter);
+    res.stats_field_names.resize(18);
+    res.stats.resize(18);
+    int start_id, goal_id;
+    static int counter = 0;
+    bool isPlanFound;
 
-  counter++;
+    double total_planning_time = clock();
+    bool forward_search = true;
+    
+    if(req.planner_type != -1)
+    {
+      isPlanFound = runMHAPlanner(monolithic_pr2_planner::T_SMHA, "smha_", req, res,
+                                  search_request, counter);
+    }
+    else{
+      isPlanFound = runARAPlanner(monolithic_pr2_planner::T_ARA, "ara_", req, res,
+                                search_request, counter, theta);
+    }
+    counter++;
+
+  }
   return true;
 }
 
