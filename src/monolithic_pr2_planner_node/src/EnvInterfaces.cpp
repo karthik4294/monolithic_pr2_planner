@@ -584,7 +584,7 @@ bool EnvInterfaces::planPathCallback(GetMobileArmPlan::Request &req,
                                      GetMobileArmPlan::Response &res) {
   boost::unique_lock<boost::mutex> lock(mutex);
 
-  Eigen::MatrixXd theta = Eigen::MatrixXd::Zero(33, 1);
+  Eigen::MatrixXd theta = Eigen::MatrixXd::Zero(28, 1);
 
   for(int i = 0; i < 10; i++) {
     SearchRequestParamsPtr search_request = make_shared<SearchRequestParams>();

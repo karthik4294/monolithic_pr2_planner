@@ -26,10 +26,11 @@ Environment::Environment(ros::NodeHandle nh, bool learn_phase)
         m_planner_type(T_SMHA),
         m_min_heur(INFINITECOST),
         m_learn_phase(learn_phase),
+        m_use_new_heuristics(false),
         m_num_trajs(25),
-        m_traj_ts(10000),
+        m_traj_ts(1000),
         m_alpha(0.01),
-        m_explr(1.0){
+        m_explr(1.0) {
         m_param_catalog.fetch(nh);
         configurePlanningDomain();
 }
@@ -490,8 +491,9 @@ Trajectory Environment::GenerateTraj(int sourceStateID){
     // the action, and probs
     traj_ids.push_back(successor->id());
 
-    cum_drop_heur += (double)(parent_heur - succ_heur)/100.0;
-    drop_heur.push_back(cum_drop_heur);
+    double dh = (double)(parent_heur - succ_heur)/100.0;
+    cum_drop_heur += dh;
+    drop_heur.push_back(dh);
 
     action_ids.push_back(num);
 
@@ -567,9 +569,6 @@ Eigen::MatrixXd Environment::GetFeatureVector(int lm_state_id_1, int lm_state_id
   feature(25, 0) = ((double)(m_goal->getObjectState()).roll()/obj_norm_rpy);
   feature(26, 0) = ((double)(m_goal->getObjectState()).pitch()/obj_norm_rpy);
   feature(27, 0) = ((double)(m_goal->getObjectState()).yaw()/obj_norm_rpy);
-
-  std::cout << feature << std::endl;
-  getchar();
 
   // feature(33, 0) = (goal_state->obj_x());
   // feature(34, 0) = (goal_state->obj_y());
