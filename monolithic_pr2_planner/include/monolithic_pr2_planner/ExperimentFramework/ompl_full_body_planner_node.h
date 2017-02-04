@@ -177,10 +177,6 @@ class omplFullBodyCollisionChecker : public ompl::base::StateValidityChecker
       return false;
     }
 
-
-
-
-
     virtual bool isValid(const ompl::base::State *state) const
     {
       const ompl::base::CompoundState* s = dynamic_cast<const ompl::base::CompoundState*> (state);

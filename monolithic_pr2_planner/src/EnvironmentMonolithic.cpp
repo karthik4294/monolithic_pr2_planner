@@ -15,6 +15,8 @@
 double METER_TO_MM_MULT = 1000;
 constexpr double kHeuristicDeflation = 1.0;
 
+double viz_id = 0;
+
 using namespace monolithic_pr2_planner;
 using namespace boost;
 
@@ -29,6 +31,7 @@ EnvironmentMonolithic::EnvironmentMonolithic(ros::NodeHandle nh)
         //m_mprims = MotionPrimitivesMgr(m_goal);
         m_param_catalog.fetch(nh);
         configurePlanningDomain();
+        line_pub = nh.advertise<visualization_msgs::Marker>("line_marker", 1000);
 }
 
 /**
@@ -413,7 +416,7 @@ void EnvironmentMonolithic::GetSuccs(int q_id, int sourceStateID, vector<int>* s
         //************************DEBUG*********************//
 
         //Karthik
-        expansion_pose.visualize(250/NUM_SMHA_HEUR*q_id);
+        //expansion_pose.visualize(250/NUM_SMHA_HEUR*q_id);
         
         // source_state->robot_pose().visualize(250/NUM_SMHA_HEUR*q_id);
         // /m_cspace_mgr->visualizeAttachedObject(expansion_pose, 250/NUM_SMHA_HEUR*q_id);
@@ -655,7 +658,13 @@ bool EnvironmentMonolithic::setStartGoal(SearchRequestPtr search_request,
         return false;
     }
 
-    start_pose.visualize();
+    //start_pose.visualize();
+
+    vector<double> l_arm, r_arm;
+    search_request->m_params->right_arm_start.getAngles(&r_arm);
+    search_request->m_params->left_arm_start.getAngles(&l_arm);
+    BodyPose sbp = search_request->m_params->base_start.body_pose();
+    Visualizer::pviz->visualizeRobot(r_arm, l_arm, sbp, 120, "start_state", 0);
     m_cspace_mgr->visualizeAttachedObject(start_pose);
     //m_cspace_mgr->visualizeCollisionModel(start_pose);
     //std::cin.get();
@@ -673,6 +682,14 @@ bool EnvironmentMonolithic::setStartGoal(SearchRequestPtr search_request,
     RobotState goal_pose(search_request->m_params->base_goal, 
                      search_request->m_params->right_arm_goal,
                      search_request->m_params->left_arm_goal);
+
+
+    BodyPose gbp = search_request->m_params->base_goal.body_pose();
+    search_request->m_params->right_arm_goal.getAngles(&r_arm);
+    search_request->m_params->left_arm_goal.getAngles(&l_arm);
+    Visualizer::pviz->visualizeRobot(r_arm, l_arm, gbp, 120, "goal_state", 1);
+
+    //getchar();
 
     GraphStatePtr goal_graph_state = make_shared<GraphState>(goal_pose);
     m_hash_mgr->save(goal_graph_state);
@@ -940,20 +957,16 @@ void EnvironmentMonolithic::VisualizeContState(const ompl::base::State *child, c
     RobotState parent_robot_state, child_robot_state;
     ContBaseState parent_base, child_base;
     
-    if(is_discrete)
-    {
-      if (!convertFullState(child, child_robot_state, child_base)) {
+
+      if (!convertFullState(parent, parent_robot_state, parent_base)) {
         //ROS_ERROR("[VisualizeContState] Discrete child ik failed for visualization!");
       }
-    }
 
-    if(!is_discrete)
-    {
       if (!convertFullState(child, child_robot_state, child_base)) {
        //ROS_ERROR("[VisualizeContState] Conitnous child ik failed for visualization!");
        //printContState(child);
       }
-    }
+    
 
     vector<double> l_arm, r_arm;
     //robot_states.push_back(child_robot_state);
@@ -964,9 +977,34 @@ void EnvironmentMonolithic::VisualizeContState(const ompl::base::State *child, c
     BodyPose bp = child_base.body_pose();  
 
     if(is_discrete)
-      Visualizer::pviz->visualizeRobot(r_arm, l_arm, bp, 60, "discrete_state", 0);
-    else
-      Visualizer::pviz->visualizeRobot(r_arm, l_arm, bp, 240, "continous_state", 0);
+      Visualizer::pviz->visualizeRobot(r_arm, l_arm, bp, 350, "discrete_state", rand());
+    else{
+      Visualizer::pviz->visualizeRobot(r_arm, l_arm, bp, 240, "continous_state", rand());
+
+      // visualization_msgs::Marker line_strip;
+      // line_strip.type = visualization_msgs::Marker::LINE_STRIP;
+      // line_strip.id = rand();
+      // line_strip.scale.x = 0.05;
+      // line_strip.scale.y = 0.05;
+      // line_strip.scale.z = 0.05;
+      // line_strip.header.frame_id = "map";
+      // line_strip.lifetime = ros::Duration();
+
+      // geometry_msgs::Point point;
+      // point.x = parent_base.x();
+      // point.y = parent_base.y();
+      // point.z = parent_base.z() + 0.5;
+      // line_strip.points.push_back(point);
+      // point.x = child_base.x();
+      // point.y = child_base.y();
+      // point.z = child_base.z() + 0.5;
+      // line_strip.points.push_back(point);
+      // line_strip.color.b = 1.0f;
+      // line_strip.color.a = 1.0;
+
+      // line_pub.publish(line_strip);  
+
+    }
     
     usleep(5000);
 }

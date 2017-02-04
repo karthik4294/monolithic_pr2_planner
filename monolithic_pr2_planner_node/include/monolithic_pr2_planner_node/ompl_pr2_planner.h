@@ -41,7 +41,9 @@ typedef monolithic_pr2_planner_node::GetMobileArmPlan::Request NodeRequest;
 
 class OMPLPR2Planner{
     public:
-        OMPLPR2Planner(const monolithic_pr2_planner::CSpaceMgrPtr& cspace, int planner_id);
+        OMPLPR2Planner(const monolithic_pr2_planner::CSpaceMgrPtr& cspace, int planner_id){}
+        OMPLPR2Planner(const monolithic_pr2_planner::CSpaceMgrPtr& cspace, int planner_id,
+                       SearchRequestParams& search_request);
         bool planPathCallback(monolithic_pr2_planner::SearchRequestParams& search_request, int trial_id,
             StatsWriter& m_stats_writer);
         bool checkRequest(monolithic_pr2_planner::SearchRequestParams& search_request);

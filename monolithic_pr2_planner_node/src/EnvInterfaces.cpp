@@ -576,8 +576,7 @@ bool EnvInterfaces::runPPMAPlanner(int planner_type,
 
   RobotState::setPlanningMode(PlanningModes::RIGHT_ARM_MOBILE);
 
-
-  m_rrt.reset(new OMPLPR2Planner(m_mon_env->getCollisionSpace(), RRT_NUM));
+  m_rrt.reset(new OMPLPR2Planner(m_mon_env->getCollisionSpace(), RRT_NUM, *search_request));
   ompl::base::SpaceInformationPtr si = m_rrt->GetSpaceInformationPtr();
 
   m_mon_env->setSpaceInformation(si);
@@ -634,7 +633,8 @@ bool EnvInterfaces::runPPMAPlanner(int planner_type,
   if (req.use_ompl) {
     ROS_INFO("OMPL planner init : %d", req.planner_type);
     RobotState::setPlanningMode(PlanningModes::RIGHT_ARM_MOBILE);
-    m_ompl_planner.reset(new OMPLPR2Planner(m_mon_env->getCollisionSpace(), static_cast<int>(req.planner_type) ));
+    m_ompl_planner.reset(new OMPLPR2Planner(m_mon_env->getCollisionSpace(), static_cast<int>(req.planner_type),
+                                            *search_request ));
     ROS_INFO("ompl check request");
 
     if (!m_ompl_planner->checkRequest(*search_request)) {
@@ -800,7 +800,7 @@ bool EnvInterfaces::runPPMAPlanner(int planner_type,
               robot_state.right_arm().getAngles(&r_arm);
               robot_state.left_arm().getAngles(&l_arm);
               bp = next_robot_state.getContBaseState().body_pose();
-              //Visualizer::pviz->visualizeRobot(r_arm, l_arm, bp, 150, "robot", 0);
+              //Visualizer::pviz->visualizeRobot(r_arm, l_arm, bp, 150, "robot", rand());
               //usleep(5000);
             }
 
@@ -812,8 +812,11 @@ bool EnvInterfaces::runPPMAPlanner(int planner_type,
                 interp_steps[j].right_arm().getAngles(&r_arm);
                 interp_steps[j].left_arm().getAngles(&l_arm);
                 bp = interp_steps[j].getContBaseState().body_pose();
-                //Visualizer::pviz->visualizeRobot(r_arm, l_arm, bp, 150, "robot", 0);
-                //usleep(5000);
+                if(j % 20 == 0)
+                {
+                  //Visualizer::pviz->visualizeRobot(r_arm, l_arm, bp, 150, "robot", rand());
+                  //usleep(5000);
+                }
               
             }
 
@@ -823,7 +826,7 @@ bool EnvInterfaces::runPPMAPlanner(int planner_type,
             next_robot_state.right_arm().getAngles(&r_arm);
             next_robot_state.left_arm().getAngles(&l_arm);
             bp = next_robot_state.getContBaseState().body_pose();
-            //Visualizer::pviz->visualizeRobot(r_arm, l_arm, bp, 150, "robot", 0);
+            //Visualizer::pviz->visualizeRobot(r_arm, l_arm, bp, 150, "robot", rand());
             //usleep(5000);
         }
         ROS_INFO("End ierpolation.");

@@ -26,7 +26,8 @@ ompl::base::OptimizationObjectivePtr getThresholdPathLengthObj(const ompl::base:
     }
 }
 
-OMPLPR2Planner::OMPLPR2Planner(const CSpaceMgrPtr& cspace, int planner_id):
+OMPLPR2Planner::OMPLPR2Planner(const CSpaceMgrPtr& cspace, int planner_id,
+                               SearchRequestParams& search_request):
     m_planner_id(planner_id), ph_("~"){
     //create the StateSpace (defines the dimensions and their bounds)
     ROS_INFO("initializing OMPL");
@@ -102,7 +103,7 @@ OMPLPR2Planner::OMPLPR2Planner(const CSpaceMgrPtr& cspace, int planner_id):
     init_l_arm[0] = (0.038946287971107774);
     init_l_arm[1] = (1.2146697069025374);
     init_l_arm[2] = (1.3963556492780154);
-    init_l_arm[3] = -1.1972269899800325;
+    init_l_arm[3] = -1.1972269899800325;    
     init_l_arm[4] = (-4.616317135720829);
     init_l_arm[5] = -0.9887266887318599;
     init_l_arm[6] = 1.1755681069775656;
@@ -142,6 +143,15 @@ OMPLPR2Planner::OMPLPR2Planner(const CSpaceMgrPtr& cspace, int planner_id):
         planner_id == BITSTAR_NUM || planner_id == BITSTARFIRSTSOL_NUM){
         pdef->setOptimizationObjective(getThresholdPathLengthObj(si, planner_id));
     }
+
+    FullState ompl_start(fullBodySpace);
+    FullState ompl_goal(fullBodySpace);
+    if (!createStartGoal(ompl_start, ompl_goal, search_request))
+        exit(1);
+    pdef->clearGoal();
+    pdef->clearStartStates();
+    pdef->setStartAndGoalStates(ompl_start,ompl_goal);
+
     planner->setProblemDefinition(ompl::base::ProblemDefinitionPtr(pdef));
     planner->setup();
     pathSimplifier = new ompl::geometric::PathSimplifier(si);
@@ -167,11 +177,13 @@ bool OMPLPR2Planner::createStartGoal(FullState& ompl_start, FullState& ompl_goal
     (*(ompl_start->as<VectorState>(0)))[6] = right_arm_start.getUpperArmRollAngle();
     (*(ompl_start->as<VectorState>(0)))[7] = left_arm_start.getUpperArmRollAngle();
     (*(ompl_start->as<VectorState>(0)))[8] = base_start.z();
+    
     ompl_start->as<SE2State>(1)->setXY(base_start.x(),
                                        base_start.y());
     // may need to normalize the theta?
     double normalized_theta = angles::normalize_angle(base_start.theta());
     ompl_start->as<SE2State>(1)->setYaw(normalized_theta);
+
     // ROS_INFO("Start : obj xyzrpy (%f %f %f %f %f %f) base xyztheta (%f %f %f %f) Upper arm roll (%f %f)",
     //           obj_state.x(), obj_state.y(), obj_state.z(), obj_state.roll(), obj_state.pitch(), obj_state.yaw(),
     //           base_start.x(), base_start.y(), base_start.z(), normalized_theta,
@@ -187,6 +199,7 @@ bool OMPLPR2Planner::createStartGoal(FullState& ompl_start, FullState& ompl_goal
     (*(ompl_goal->as<VectorState>(0)))[6] = req.right_arm_goal.getUpperArmRollAngle();//req.rarm_goal[2];
     (*(ompl_goal->as<VectorState>(0)))[7] = req.left_arm_goal.getUpperArmRollAngle();//req.larm_goal[2];
     (*(ompl_goal->as<VectorState>(0)))[8] = req.base_goal.z();
+    
     ompl_goal->as<SE2State>(1)->setXY(req.base_goal.x(),req.base_goal.y());
     normalized_theta = angles::normalize_angle(req.base_goal.theta());
     ompl_goal->as<SE2State>(1)->setYaw(normalized_theta);
@@ -286,21 +299,21 @@ bool OMPLPR2Planner::planPathCallback(SearchRequestParams& search_request, int t
     planner->getProblemDefinition()->clearSolutionPaths();
     planner->as<ompl::geometric::PRM>()->clearQuery();
     search_request.left_arm_start.getAngles(&m_collision_checker->l_arm_init);
-    FullState ompl_start(fullBodySpace);
-    FullState ompl_goal(fullBodySpace);
-    if (!createStartGoal(ompl_start, ompl_goal, search_request))
-        return false;
-    pdef->clearGoal();
-    pdef->clearStartStates();
-    pdef->setStartAndGoalStates(ompl_start,ompl_goal);
-    ompl::base::GoalState* temp_goal = new ompl::base::GoalState(planner->getSpaceInformation());
-    temp_goal->setState(ompl_goal);
-    ompl::base::GoalPtr temp_goal2(temp_goal);
+    // FullState ompl_start(fullBodySpace);
+    // FullState ompl_goal(fullBodySpace);
+    // if (!createStartGoal(ompl_start, ompl_goal, search_request))
+    //     return false;
+    // pdef->clearGoal();
+    // pdef->clearStartStates();
+    // pdef->setStartAndGoalStates(ompl_start,ompl_goal);
+    // ompl::base::GoalState* temp_goal = new ompl::base::GoalState(planner->getSpaceInformation());
+    // temp_goal->setState(ompl_goal);
+    // ompl::base::GoalPtr temp_goal2(temp_goal);
 
-    // something about different planner types here
-    //if(planner_id_==2 || planner_id_==3){
-        pdef->setGoal(temp_goal2);
-    //}
+    // // something about different planner types here
+    // //if(planner_id_==2 || planner_id_==3){
+    //     pdef->setGoal(temp_goal2);
+    // //}
     double t0 = ros::Time::now().toSec();
     ROS_INFO("Allocated planning time %f", m_allocated_planning_time);
     ompl::base::PlannerStatus ompl_res = planner->solve(m_allocated_planning_time);

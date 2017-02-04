@@ -66,7 +66,7 @@ namespace ompl
                     double dist = weights_[0]*sqrt( sqrdiff(parent_comp->as<ompl::base::RealVectorWeightedStateSpace::StateType>()->values[0], child_comp->as<ompl::base::RealVectorWeightedStateSpace::StateType>()->values[0]) + 
                                   sqrdiff(parent_comp->as<ompl::base::RealVectorWeightedStateSpace::StateType>()->values[1], child_comp->as<ompl::base::RealVectorWeightedStateSpace::StateType>()->values[1]) +
                                   sqrdiff(parent_comp->as<ompl::base::RealVectorWeightedStateSpace::StateType>()->values[2], child_comp->as<ompl::base::RealVectorWeightedStateSpace::StateType>()->values[2]) +
-                                  sqrdiff(parent_comp->as<ompl::base::RealVectorWeightedStateSpace::StateType>()->values[8], child_comp->as<ompl::base::RealVectorWeightedStateSpace::StateType>()->values[8]) ) 
+                                  sqrdiff(parent_comp->as<ompl::base::RealVectorWeightedStateSpace::StateType>()->values[8], child_comp->as<ompl::base::RealVectorWeightedStateSpace::StateType>()->values[8])                                  ) 
                                 +                                  
                                   weights_[1]*( fabs(shortest_angular_distance(parent_comp->as<ompl::base::RealVectorWeightedStateSpace::StateType>()->values[3], child_comp->as<ompl::base::RealVectorWeightedStateSpace::StateType>()->values[3]) ) +
                                   fabs(shortest_angular_distance(parent_comp->as<ompl::base::RealVectorWeightedStateSpace::StateType>()->values[4], child_comp->as<ompl::base::RealVectorWeightedStateSpace::StateType>()->values[4]) ) +

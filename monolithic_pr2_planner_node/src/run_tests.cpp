@@ -156,6 +156,10 @@ int main(int argc, char** argv){
   req.larm_object.pose.orientation.z = 0;
   req.larm_object.pose.orientation.w = 1;
 
+
+  //for rrtstar anytime
+  std::vector<double> hstar_times = {9.3204, 6.5687, 8.2092, 6.0221, 4.4682, 8.5872, 4.2070, 11.4842, 5.7939, 14.0426};
+
   req.xyz_tolerance = .04;
   req.roll_tolerance = .1;
   req.pitch_tolerance = .1;

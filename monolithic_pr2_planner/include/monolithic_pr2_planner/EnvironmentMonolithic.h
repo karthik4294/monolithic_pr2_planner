@@ -105,6 +105,7 @@ namespace monolithic_pr2_planner {
             bool m_use_new_heuristics;
 
             ompl::base::SpaceInformationPtr si_;
+            ros::Publisher line_pub;
 
         // SBPL interface stuff
         public:

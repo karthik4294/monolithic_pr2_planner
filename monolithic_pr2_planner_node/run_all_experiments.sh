@@ -27,7 +27,7 @@ for i in {0..9}; do
     #if [ $method == "rrt" ]; then
     #  ./bin/runTests experiments/fbp_tests$i.yaml $method
     #else
-    ~/fbp/devel/lib/monolithic_pr2_planner_node/runTests $method experiments/fbp_tests$i.yaml  
+    ~/fbp/devel/lib/monolithic_pr2_planner_node/runTests $method experiments/fbp_tests$i.yaml 
     #fi
 
     #when the trials are done, kill the planner
