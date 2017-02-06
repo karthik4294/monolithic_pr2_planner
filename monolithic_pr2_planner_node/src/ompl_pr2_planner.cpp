@@ -56,17 +56,20 @@ OMPLPR2Planner::OMPLPR2Planner(const CSpaceMgrPtr& cspace, int planner_id,
     for(int i = 0; i < se2->getSubspaceCount() ;i++)
         se2->setSubspaceWeight(i, se2_wts[i]);
     
-    ompl::base::RealVectorWeightedStateSpace* r7 = new ompl::base::RealVectorWeightedStateSpace(9, r_wts);
-    r7->setDimensionName(0,"arms_x");
-    r7->setDimensionName(1,"arms_y");
-    r7->setDimensionName(2,"arms_z");
-    r7->setDimensionName(3,"arms_roll");
-    r7->setDimensionName(4,"arms_pitch");
-    r7->setDimensionName(5,"arms_yaw");
-    r7->setDimensionName(6,"free_angle_right");
-    r7->setDimensionName(7,"free_angle_left");
-    r7->setDimensionName(8,"torso");
-    ompl::base::RealVectorBounds bounds(9);
+    ompl::base::RealVectorWeightedStateSpace* r12 = new ompl::base::RealVectorWeightedStateSpace(12, r_wts);
+    r12->setDimensionName(0,"arms_x");
+    r12->setDimensionName(1,"arms_y");
+    r12->setDimensionName(2,"arms_z");
+    r12->setDimensionName(3,"arms_roll");
+    r12->setDimensionName(4,"arms_pitch");
+    r12->setDimensionName(5,"arms_yaw");
+    r12->setDimensionName(6,"free_angle_right");
+    r12->setDimensionName(7,"free_angle_left");
+    r12->setDimensionName(8,"torso");
+    r12->setDimensionName(9,"base_x");
+    r12->setDimensionName(10,"base_y");
+    r12->setDimensionName(11,"base_theta");
+    ompl::base::RealVectorBounds bounds(12);
 
     bounds.setLow(0,0.35);//arms_x
     bounds.setHigh(0,1.2);//arms_x
@@ -88,12 +91,20 @@ OMPLPR2Planner::OMPLPR2Planner(const CSpaceMgrPtr& cspace, int planner_id,
     bounds.setHigh(7,3.75);//fa_left
     bounds.setLow(8,0); //torso
     bounds.setHigh(8,0.30); //torso
-    r7->setBounds(bounds);
-    ompl::base::StateSpacePtr se2_p(se2);
-    ompl::base::StateSpacePtr r7_p(r7);
-    fullBodySpace = r7_p + se2_p;
+    bounds.setLow(9,0); //base_x
+    bounds.setHigh(9,10); //base_x
+    bounds.setLow(10,0); //base_y
+    bounds.setHigh(10,6); //base_y
+    bounds.setLow(11,-M_PI); //base_theta
+    bounds.setHigh(11,M_PI); //base_theta
+    
+    r12->setBounds(bounds);
 
-    fullBodySpace->printSettings(std::cout);
+    ompl::base::StateSpacePtr se2_p(se2);
+    ompl::base::StateSpacePtr r12_p(r12);
+    fullBodySpace = r12_p;
+
+    r12->printSettings(std::cout);
 
     //Define our SpaceInformation (combines the state space and collision checker)
     ompl::base::SpaceInformationPtr si(new ompl::base::SpaceInformation(fullBodySpace));
@@ -144,13 +155,13 @@ OMPLPR2Planner::OMPLPR2Planner(const CSpaceMgrPtr& cspace, int planner_id,
         pdef->setOptimizationObjective(getThresholdPathLengthObj(si, planner_id));
     }
 
-    FullState ompl_start(fullBodySpace);
-    FullState ompl_goal(fullBodySpace);
+    ScVectorState ompl_start(fullBodySpace);
+    ScVectorState ompl_goal(fullBodySpace);
     if (!createStartGoal(ompl_start, ompl_goal, search_request))
         exit(1);
     pdef->clearGoal();
     pdef->clearStartStates();
-    pdef->setStartAndGoalStates(ompl_start,ompl_goal);
+    pdef->setStartAndGoalStates(ompl_start, ompl_goal);
 
     planner->setProblemDefinition(ompl::base::ProblemDefinitionPtr(pdef));
     planner->setup();
@@ -160,29 +171,27 @@ OMPLPR2Planner::OMPLPR2Planner(const CSpaceMgrPtr& cspace, int planner_id,
 
 // given the start and goal from the request, create a start and goal that
 // conform to the ompl types
-bool OMPLPR2Planner::createStartGoal(FullState& ompl_start, FullState& ompl_goal, 
+bool OMPLPR2Planner::createStartGoal(ScVectorState& ompl_start, ScVectorState& ompl_goal, 
                                      SearchRequestParams& req){
     // ROS_INFO("createStartGoal received a start of ");
     LeftContArmState left_arm_start = req.left_arm_start;
     RightContArmState right_arm_start = req.right_arm_start;
     ContBaseState base_start = req.base_start;
     ContObjectState obj_state = right_arm_start.getObjectStateRelBody();
-
-    (*(ompl_start->as<VectorState>(0)))[0] = obj_state.x();
-    (*(ompl_start->as<VectorState>(0)))[1] = obj_state.y();
-    (*(ompl_start->as<VectorState>(0)))[2] = obj_state.z();
-    (*(ompl_start->as<VectorState>(0)))[3] = obj_state.roll();
-    (*(ompl_start->as<VectorState>(0)))[4] = obj_state.pitch();
-    (*(ompl_start->as<VectorState>(0)))[5] = obj_state.yaw();
-    (*(ompl_start->as<VectorState>(0)))[6] = right_arm_start.getUpperArmRollAngle();
-    (*(ompl_start->as<VectorState>(0)))[7] = left_arm_start.getUpperArmRollAngle();
-    (*(ompl_start->as<VectorState>(0)))[8] = base_start.z();
-    
-    ompl_start->as<SE2State>(1)->setXY(base_start.x(),
-                                       base_start.y());
-    // may need to normalize the theta?
     double normalized_theta = angles::normalize_angle(base_start.theta());
-    ompl_start->as<SE2State>(1)->setYaw(normalized_theta);
+
+    ompl_start->values[0] = obj_state.x();
+    ompl_start->values[1] = obj_state.y();
+    ompl_start->values[2] = obj_state.z();
+    ompl_start->values[3] = obj_state.roll();
+    ompl_start->values[4] = obj_state.pitch();
+    ompl_start->values[5] = obj_state.yaw();
+    ompl_start->values[6] = right_arm_start.getUpperArmRollAngle();
+    ompl_start->values[7] = left_arm_start.getUpperArmRollAngle();
+    ompl_start->values[8] = base_start.z();
+    ompl_start->values[9] = base_start.x();
+    ompl_start->values[10] = base_start.y();
+    ompl_start->values[11] = normalized_theta;
 
     // ROS_INFO("Start : obj xyzrpy (%f %f %f %f %f %f) base xyztheta (%f %f %f %f) Upper arm roll (%f %f)",
     //           obj_state.x(), obj_state.y(), obj_state.z(), obj_state.roll(), obj_state.pitch(), obj_state.yaw(),
@@ -190,20 +199,21 @@ bool OMPLPR2Planner::createStartGoal(FullState& ompl_start, FullState& ompl_goal
     //           right_arm_start.getUpperArmRollAngle(), left_arm_start.getUpperArmRollAngle());
 
     ContObjectState goal_obj_state = req.right_arm_goal.getObjectStateRelBody();
-    (*(ompl_goal->as<VectorState>(0)))[0] = goal_obj_state.x();
-    (*(ompl_goal->as<VectorState>(0)))[1] = goal_obj_state.y();
-    (*(ompl_goal->as<VectorState>(0)))[2] = goal_obj_state.z();
-    (*(ompl_goal->as<VectorState>(0)))[3] = goal_obj_state.roll();
-    (*(ompl_goal->as<VectorState>(0)))[4] = goal_obj_state.pitch();
-    (*(ompl_goal->as<VectorState>(0)))[5] = goal_obj_state.yaw();
-    (*(ompl_goal->as<VectorState>(0)))[6] = req.right_arm_goal.getUpperArmRollAngle();//req.rarm_goal[2];
-    (*(ompl_goal->as<VectorState>(0)))[7] = req.left_arm_goal.getUpperArmRollAngle();//req.larm_goal[2];
-    (*(ompl_goal->as<VectorState>(0)))[8] = req.base_goal.z();
-    
-    ompl_goal->as<SE2State>(1)->setXY(req.base_goal.x(),req.base_goal.y());
     normalized_theta = angles::normalize_angle(req.base_goal.theta());
-    ompl_goal->as<SE2State>(1)->setYaw(normalized_theta);
-    
+
+    ompl_goal->values[0] = goal_obj_state.x();
+    ompl_goal->values[1] = goal_obj_state.y();
+    ompl_goal->values[2] = goal_obj_state.z();
+    ompl_goal->values[3] = goal_obj_state.roll();
+    ompl_goal->values[4] = goal_obj_state.pitch();
+    ompl_goal->values[5] = goal_obj_state.yaw();
+    ompl_goal->values[6] = req.right_arm_goal.getUpperArmRollAngle();//req.rarm_goal[2];
+    ompl_goal->values[7] = req.left_arm_goal.getUpperArmRollAngle();//req.larm_goal[2];
+    ompl_goal->values[8] = req.base_goal.z();
+    ompl_goal->values[9] = req.base_goal.x();
+    ompl_goal->values[10] = req.base_goal.y();
+    ompl_goal->values[11] = normalized_theta;
+
     // ROS_INFO("Goal : obj xyzrpy (%f %f %f %f %f %f) base xyztheta (%f %f %f %f) Upper arm roll (%f %f)",
     //       goal_obj_state.x(), goal_obj_state.y(), goal_obj_state.z(), goal_obj_state.roll(), goal_obj_state.pitch(), goal_obj_state.yaw(),
     //       req.base_goal.x(), req.base_goal.y(), req.base_goal.z(), normalized_theta,
@@ -232,34 +242,32 @@ bool OMPLPR2Planner::convertFullState(const ompl::base::State* state, monolithic
     ContObjectState obj_state;
 
     // fix the l_arm angles
-    vector<double> init_l_arm(7,0);
-    init_l_arm[0] = (0.038946287971107774);
-    init_l_arm[1] = (1.2146697069025374);
-    init_l_arm[2] = (1.3963556492780154);
-    init_l_arm[3] = -1.1972269899800325;
-    init_l_arm[4] = (-4.616317135720829);
-    init_l_arm[5] = -0.9887266887318599;
-    init_l_arm[6] = 1.1755681069775656;
+    vector<double> l_arm_init(7,0);
+    l_arm_init[0] = (0.038946287971107774);
+    l_arm_init[1] = (1.2146697069025374);
+    l_arm_init[2] = (1.3963556492780154);
+    l_arm_init[3] = -1.1972269899800325;
+    l_arm_init[4] = (-4.616317135720829);
+    l_arm_init[5] = -0.9887266887318599;
+    l_arm_init[6] = 1.1755681069775656;
 
     vector<double> init_r_arm(7,0);
 
-    const ompl::base::CompoundState* s = dynamic_cast<const ompl::base::CompoundState*> (state);
+    init_r_arm[2] = state->as<VectorState>()->values[6];
 
-    init_r_arm[2] = (*(s->as<VectorState>(0)))[6];
-
-    LeftContArmState l_arm(init_l_arm);
+    LeftContArmState l_arm(l_arm_init);
     RightContArmState r_arm(init_r_arm);
 
-    obj_state.x((*(s->as<VectorState>(0)))[0]);
-    obj_state.y((*(s->as<VectorState>(0)))[1]);
-    obj_state.z((*(s->as<VectorState>(0)))[2]);
-    obj_state.roll((*(s->as<VectorState>(0)))[3]);
-    obj_state.pitch((*(s->as<VectorState>(0)))[4]);
-    obj_state.yaw((*(s->as<VectorState>(0)))[5]);
-    base.z((*(s->as<VectorState>(0)))[8]);
-    base.x(s->as<SE2State>(1)->getX());
-    base.y(s->as<SE2State>(1)->getY());
-    base.theta(s->as<SE2State>(1)->getYaw());
+    obj_state.x(state->as<VectorState>()->values[0]);
+    obj_state.y(state->as<VectorState>()->values[1]);
+    obj_state.z(state->as<VectorState>()->values[2]);
+    obj_state.roll(state->as<VectorState>()->values[3]);
+    obj_state.pitch(state->as<VectorState>()->values[4]);
+    obj_state.yaw(state->as<VectorState>()->values[5]);
+    base.z(state->as<VectorState>()->values[8]);
+    base.x(state->as<VectorState>()->values[9]);
+    base.y(state->as<VectorState>()->values[10]);
+    base.theta(state->as<VectorState>()->values[11]);
 
     RobotState seed_state(base, r_arm, l_arm);
     RobotPosePtr final_state;
@@ -269,7 +277,6 @@ bool OMPLPR2Planner::convertFullState(const ompl::base::State* state, monolithic
 
     robot_state = *final_state;
     return true;
-
 }
 
 bool OMPLPR2Planner::checkRequest(SearchRequestParams& search_request){
@@ -278,8 +285,8 @@ bool OMPLPR2Planner::checkRequest(SearchRequestParams& search_request){
     if (m_planner_id == PRM_P_NUM)
         planner->as<ompl::geometric::PRM>()->clearQuery();
     search_request.left_arm_start.getAngles(&m_collision_checker->l_arm_init);
-    FullState ompl_start(fullBodySpace);
-    FullState ompl_goal(fullBodySpace);
+    ScVectorState ompl_start(fullBodySpace);
+    ScVectorState ompl_goal(fullBodySpace);
     return createStartGoal(ompl_start, ompl_goal, search_request);
 }
 

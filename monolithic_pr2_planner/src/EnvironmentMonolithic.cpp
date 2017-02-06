@@ -853,21 +853,24 @@ void EnvironmentMonolithic::GetContState(int state_id, ompl::base::State *state)
   LeftContArmState left_arm_state = robot_state.left_arm();
   ContObjectState obj_state = robot_state.getObjectStateRelBody();
 
-  ompl::base::CompoundState* s = dynamic_cast<ompl::base::CompoundState*> (state);
+  const VectorState* s = state->as<VectorState>();
 
-  s->as<VectorState>(0)->values[0] = obj_state.x();
-  s->as<VectorState>(0)->values[1] = obj_state.y();
-  s->as<VectorState>(0)->values[2] = obj_state.z();
-  s->as<VectorState>(0)->values[3] = obj_state.roll();
-  s->as<VectorState>(0)->values[4] = obj_state.pitch();
-  s->as<VectorState>(0)->values[5] = obj_state.yaw();
-  s->as<VectorState>(0)->values[6] = right_arm_state.getUpperArmRollAngle();
-  s->as<VectorState>(0)->values[7] = left_arm_state.getUpperArmRollAngle();
-  s->as<VectorState>(0)->values[8] = base_state.z();
+  s->values[0] = obj_state.x();
+  s->values[1] = obj_state.y();
+  s->values[2] = obj_state.z();
+  s->values[3] = obj_state.roll();
+  s->values[4] = obj_state.pitch();
+  s->values[5] = obj_state.yaw();
+  s->values[6] = right_arm_state.getUpperArmRollAngle();
+  s->values[7] = left_arm_state.getUpperArmRollAngle();
+  s->values[8] = base_state.z();
+  s->values[9] = base_state.x();
+  s->values[10] = base_state.y();
+  s->values[11] = angles::normalize_angle(base_state.theta() );
 
-  s->as<SE2State>(1)->setX(base_state.x());
-  s->as<SE2State>(1)->setY(base_state.y());
-  s->as<SE2State>(1)->setYaw(angles::normalize_angle(base_state.theta() ) );
+  // s->as<SE2State>(1)->setX(base_state.x());
+  // s->as<SE2State>(1)->setY(base_state.y());
+  // s->as<SE2State>(1)->setYaw(angles::normalize_angle(base_state.theta() ) );
 
 }
 
@@ -878,21 +881,24 @@ void EnvironmentMonolithic::GetContState(RobotState robot_state, ompl::base::Sta
   LeftContArmState left_arm_state = robot_state.left_arm();
   ContObjectState obj_state = robot_state.getObjectStateRelBody();
 
-  ompl::base::CompoundState* s = dynamic_cast<ompl::base::CompoundState*> (state);
+  const VectorState* s = state->as<VectorState>();
 
-  s->as<VectorState>(0)->values[0] = obj_state.x();
-  s->as<VectorState>(0)->values[1] = obj_state.y();
-  s->as<VectorState>(0)->values[2] = obj_state.z();
-  s->as<VectorState>(0)->values[3] = obj_state.roll();
-  s->as<VectorState>(0)->values[4] = obj_state.pitch();
-  s->as<VectorState>(0)->values[5] = obj_state.yaw();
-  s->as<VectorState>(0)->values[6] = right_arm_state.getUpperArmRollAngle();
-  s->as<VectorState>(0)->values[7] = left_arm_state.getUpperArmRollAngle();
-  s->as<VectorState>(0)->values[8] = base_state.z();
+  s->values[0] = obj_state.x();
+  s->values[1] = obj_state.y();
+  s->values[2] = obj_state.z();
+  s->values[3] = obj_state.roll();
+  s->values[4] = obj_state.pitch();
+  s->values[5] = obj_state.yaw();
+  s->values[6] = right_arm_state.getUpperArmRollAngle();
+  s->values[7] = left_arm_state.getUpperArmRollAngle();
+  s->values[8] = base_state.z();
+  s->values[9] = base_state.x();
+  s->values[10] = base_state.y();
+  s->values[11] = angles::normalize_angle(base_state.theta() );
 
-  s->as<SE2State>(1)->setX(base_state.x());
-  s->as<SE2State>(1)->setY(base_state.y());
-  s->as<SE2State>(1)->setYaw(angles::normalize_angle(base_state.theta() ) );
+  // s->as<SE2State>(1)->setX(base_state.x());
+  // s->as<SE2State>(1)->setY(base_state.y());
+  // s->as<SE2State>(1)->setYaw(angles::normalize_angle(base_state.theta() ) );
 
 }
 
@@ -1011,16 +1017,17 @@ void EnvironmentMonolithic::VisualizeContState(const ompl::base::State *child, c
 
 void EnvironmentMonolithic::printContState(const ompl::base::State* state)
 {
-    const ompl::base::CompoundState* s = dynamic_cast<const ompl::base::CompoundState*> (state);
+    const VectorState* s = state->as<VectorState>();
 
-    ROS_INFO("OBJECT STATE: %f %f %f %f %f %f", s->as<VectorState>(0)->values[0], s->as<VectorState>(0)->values[1],
-                                             s->as<VectorState>(0)->values[2], s->as<VectorState>(0)->values[3], 
-                                             s->as<VectorState>(0)->values[4], s->as<VectorState>(0)->values[5]);
-    ROS_INFO("UPPER ARM ROLL STATE: %f %f", s->as<VectorState>(0)->values[6], s->as<VectorState>(0)->values[7]);
+    ROS_INFO("OBJECT STATE: %f %f %f %f %f %f", s->values[0], s->values[1],
+                                             s->values[2], s->values[3], 
+                                             s->values[4], s->values[5]);
+    ROS_INFO("UPPER ARM ROLL STATE: %f %f", s->values[6], s->values[7]);
 
-    ROS_INFO("TORSO STATE: %f", s->as<VectorState>(0)->values[8]);
+    ROS_INFO("TORSO STATE: %f", s->values[8]);
 
-    ROS_INFO("BASE STATE: %f %f %f", s->as<SE2State>(1)->getX(), s->as<SE2State>(1)->getY(), s->as<SE2State>(1)->getYaw());
+    ROS_INFO("BASE STATE: %f %f %f", s->values[9], s->values[10],
+                                     s->values[11]);
 }
 
 
@@ -1029,36 +1036,32 @@ bool EnvironmentMonolithic::convertFullState(const ompl::base::State* state, Rob
     ContObjectState obj_state;
 
     // fix the l_arm angles
-    vector<double> init_l_arm(7,0);
-    init_l_arm[0] = (0.038946287971107774);
-    init_l_arm[1] = (1.2146697069025374);
-    init_l_arm[2] = (1.3963556492780154);
-    init_l_arm[3] = -1.1972269899800325;
-    init_l_arm[4] = (-4.616317135720829);
-    init_l_arm[5] = -0.9887266887318599;
-    init_l_arm[6] = 1.1755681069775656;
+    vector<double> l_arm_init(7,0);
+    l_arm_init[0] = (0.038946287971107774);
+    l_arm_init[1] = (1.2146697069025374);
+    l_arm_init[2] = (1.3963556492780154);
+    l_arm_init[3] = -1.1972269899800325;
+    l_arm_init[4] = (-4.616317135720829);
+    l_arm_init[5] = -0.9887266887318599;
+    l_arm_init[6] = 1.1755681069775656;
 
     vector<double> init_r_arm(7,0);
 
-    const ompl::base::CompoundState* s = dynamic_cast<const ompl::base::CompoundState*> (state);
+    init_r_arm[2] = state->as<VectorState>()->values[6];
 
-    init_r_arm[2] = (*(s->as<VectorState>(0)))[6];
-
-    LeftContArmState l_arm(init_l_arm);
+    LeftContArmState l_arm(l_arm_init);
     RightContArmState r_arm(init_r_arm);
 
-    obj_state.x((*(s->as<VectorState>(0)))[0]);
-    obj_state.y((*(s->as<VectorState>(0)))[1]);
-    obj_state.z((*(s->as<VectorState>(0)))[2]);
-    obj_state.roll((*(s->as<VectorState>(0)))[3]);
-    obj_state.pitch((*(s->as<VectorState>(0)))[4]);
-    obj_state.yaw((*(s->as<VectorState>(0)))[5]);
-    //r_arm.setUpperArmRoll((*(s->as<VectorState>(0)))[6]);
-    //l_arm.setUpperArmRoll((*(s->as<VectorState>(0)))[7]);
-    base.z((*(s->as<VectorState>(0)))[8]);
-    base.x(s->as<SE2State>(1)->getX());
-    base.y(s->as<SE2State>(1)->getY());
-    base.theta(s->as<SE2State>(1)->getYaw());
+    obj_state.x(state->as<VectorState>()->values[0]);
+    obj_state.y(state->as<VectorState>()->values[1]);
+    obj_state.z(state->as<VectorState>()->values[2]);
+    obj_state.roll(state->as<VectorState>()->values[3]);
+    obj_state.pitch(state->as<VectorState>()->values[4]);
+    obj_state.yaw(state->as<VectorState>()->values[5]);
+    base.z(state->as<VectorState>()->values[8]);
+    base.x(state->as<VectorState>()->values[9]);
+    base.y(state->as<VectorState>()->values[10]);
+    base.theta(state->as<VectorState>()->values[11]);
 
     RobotState seed_state(base, r_arm, l_arm);
     RobotPosePtr final_state;

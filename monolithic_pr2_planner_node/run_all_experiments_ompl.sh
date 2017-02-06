@@ -8,7 +8,7 @@ for i in {0..9}; do
   cp experiments/tableObstacles$i.yaml experiments/tableObstacles.yaml
 
   # for method in unconstrained_mha focal_mha mha_plus original_mha; do
-  for method in rrtstar; do
+  for method in hstar bitstarfirstsol; do
   
     #create necessary folders
     mkdir -p stats
@@ -27,7 +27,7 @@ for i in {0..9}; do
     #if [ $method == "rrt" ]; then
     #  ./bin/runTests experiments/fbp_tests$i.yaml $method
     #else
-    ~/fbp/devel/lib/monolithic_pr2_planner_node/runTests $method experiments/fbp_tests$i.yaml $i
+    ~/fbp/devel/lib/monolithic_pr2_planner_node/runTests $method experiments/fbp_tests$i.yaml
     #fi
 
     #when the trials are done, kill the planner

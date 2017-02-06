@@ -32,6 +32,7 @@
 #include <ompl/base/Cost.h>
 
 typedef ompl::base::RealVectorWeightedStateSpace::StateType VectorState;
+typedef ompl::base::ScopedState<ompl::base::RealVectorWeightedStateSpace> ScVectorState;
 typedef ompl::base::SE2StateSpace::StateType SE2State;
 typedef ompl::base::ScopedState<ompl::base::CompoundStateSpace> FullState;
 

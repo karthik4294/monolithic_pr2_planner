@@ -1,5 +1,6 @@
 #pragma once
 #include <ros/ros.h>
+#include <angles/angles.h>
 #include <ompl/base/Cost.h>
 #include <ompl/base/spaces/SE2StateSpace.h>
 #include <ompl/geometric/SimpleSetup.h>
@@ -66,13 +67,23 @@ namespace ompl
                     double dist = weights_[0]*sqrt( sqrdiff(parent_comp->as<ompl::base::RealVectorWeightedStateSpace::StateType>()->values[0], child_comp->as<ompl::base::RealVectorWeightedStateSpace::StateType>()->values[0]) + 
                                   sqrdiff(parent_comp->as<ompl::base::RealVectorWeightedStateSpace::StateType>()->values[1], child_comp->as<ompl::base::RealVectorWeightedStateSpace::StateType>()->values[1]) +
                                   sqrdiff(parent_comp->as<ompl::base::RealVectorWeightedStateSpace::StateType>()->values[2], child_comp->as<ompl::base::RealVectorWeightedStateSpace::StateType>()->values[2]) +
-                                  sqrdiff(parent_comp->as<ompl::base::RealVectorWeightedStateSpace::StateType>()->values[8], child_comp->as<ompl::base::RealVectorWeightedStateSpace::StateType>()->values[8])                                  ) 
+                                  sqrdiff(parent_comp->as<ompl::base::RealVectorWeightedStateSpace::StateType>()->values[8], child_comp->as<ompl::base::RealVectorWeightedStateSpace::StateType>()->values[8])
+                                  ) 
                                 +                                  
-                                  weights_[1]*( fabs(shortest_angular_distance(parent_comp->as<ompl::base::RealVectorWeightedStateSpace::StateType>()->values[3], child_comp->as<ompl::base::RealVectorWeightedStateSpace::StateType>()->values[3]) ) +
-                                  fabs(shortest_angular_distance(parent_comp->as<ompl::base::RealVectorWeightedStateSpace::StateType>()->values[4], child_comp->as<ompl::base::RealVectorWeightedStateSpace::StateType>()->values[4]) ) +
-                                  fabs(shortest_angular_distance(parent_comp->as<ompl::base::RealVectorWeightedStateSpace::StateType>()->values[5], child_comp->as<ompl::base::RealVectorWeightedStateSpace::StateType>()->values[5]) ) +
-                                  fabs(shortest_angular_distance(parent_comp->as<ompl::base::RealVectorWeightedStateSpace::StateType>()->values[6], child_comp->as<ompl::base::RealVectorWeightedStateSpace::StateType>()->values[6]) ) +
-                                  fabs(shortest_angular_distance(parent_comp->as<ompl::base::RealVectorWeightedStateSpace::StateType>()->values[7], child_comp->as<ompl::base::RealVectorWeightedStateSpace::StateType>()->values[7]) ) ) ; 
+                                  weights_[1]*( fabs(angles::shortest_angular_distance(parent_comp->as<ompl::base::RealVectorWeightedStateSpace::StateType>()->values[3], child_comp->as<ompl::base::RealVectorWeightedStateSpace::StateType>()->values[3]) ) +
+                                  fabs(angles::shortest_angular_distance(parent_comp->as<ompl::base::RealVectorWeightedStateSpace::StateType>()->values[4], child_comp->as<ompl::base::RealVectorWeightedStateSpace::StateType>()->values[4]) ) +
+                                  fabs(angles::shortest_angular_distance(parent_comp->as<ompl::base::RealVectorWeightedStateSpace::StateType>()->values[5], child_comp->as<ompl::base::RealVectorWeightedStateSpace::StateType>()->values[5]) ) +
+                                  fabs(angles::shortest_angular_distance(parent_comp->as<ompl::base::RealVectorWeightedStateSpace::StateType>()->values[6], child_comp->as<ompl::base::RealVectorWeightedStateSpace::StateType>()->values[6]) ) +
+                                  fabs(angles::shortest_angular_distance(parent_comp->as<ompl::base::RealVectorWeightedStateSpace::StateType>()->values[7], child_comp->as<ompl::base::RealVectorWeightedStateSpace::StateType>()->values[7]) ) 
+                                  ) 
+                                +
+                                  weights_[0]*sqrt( sqrdiff(parent_comp->as<ompl::base::RealVectorWeightedStateSpace::StateType>()->values[9], child_comp->as<ompl::base::RealVectorWeightedStateSpace::StateType>()->values[9]) +
+                                  sqrdiff(parent_comp->as<ompl::base::RealVectorWeightedStateSpace::StateType>()->values[10], child_comp->as<ompl::base::RealVectorWeightedStateSpace::StateType>()->values[10])
+                                  )
+                                +
+                                  weights_[1]*( fabs(angles::shortest_angular_distance(parent_comp->as<ompl::base::RealVectorWeightedStateSpace::StateType>()->values[11], child_comp->as<ompl::base::RealVectorWeightedStateSpace::StateType>()->values[11]) ) 
+                                  );
+
 
 
                     /*

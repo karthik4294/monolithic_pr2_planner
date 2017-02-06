@@ -25,10 +25,10 @@
 #include <monolithic_pr2_planner/StatsWriter.h>
 
 typedef ompl::base::RealVectorWeightedStateSpace::StateType VectorState;
+typedef ompl::base::ScopedState<ompl::base::RealVectorWeightedStateSpace> ScVectorState;
 typedef ompl::base::SE2StateSpace::StateType SE2State;
 typedef ompl::base::ScopedState<ompl::base::CompoundStateSpace> FullState;
 typedef monolithic_pr2_planner_node::GetMobileArmPlan::Request NodeRequest;
-
 
 #define RRT_NUM 0
 #define PRM_P_NUM 1
@@ -47,7 +47,7 @@ class OMPLPR2Planner{
         bool planPathCallback(monolithic_pr2_planner::SearchRequestParams& search_request, int trial_id,
             StatsWriter& m_stats_writer);
         bool checkRequest(monolithic_pr2_planner::SearchRequestParams& search_request);
-        bool createStartGoal(FullState& start, FullState& goal, monolithic_pr2_planner::SearchRequestParams& req);
+        bool createStartGoal(ScVectorState& start, ScVectorState& goal, monolithic_pr2_planner::SearchRequestParams& req);
         void setPlanningTime(double t){m_allocated_planning_time = t;};
         ompl::base::SpaceInformationPtr GetSpaceInformationPtr() { return m_si;}
         ompl::base::StateSpacePtr GetStateSpacePtr() { return fullBodySpace;}

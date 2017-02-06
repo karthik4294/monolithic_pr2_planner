@@ -5,7 +5,7 @@ for i in {0..4}; do
 
 	./run_all_experiments_ompl.sh 
 
-	mv stats stats_rrtstar_$i
+	mv stats stats_bitstarfirstsol_$i
 
 done
 

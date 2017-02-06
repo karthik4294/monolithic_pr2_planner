@@ -23,6 +23,7 @@ using namespace monolithic_pr2_planner;
 using namespace std;
 
 typedef ompl::base::RealVectorWeightedStateSpace::StateType VectorState;
+typedef ompl::base::ScopedState<ompl::base::RealVectorWeightedStateSpace> ScVectorState;
 typedef ompl::base::SE2StateSpace::StateType SE2State;
 typedef ompl::base::ScopedState<ompl::base::CompoundStateSpace> FullState;
 

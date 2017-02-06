@@ -75,23 +75,21 @@ bool omplFullBodyMotionValidator::convertFullState(const ompl::base::State* stat
 
     vector<double> init_r_arm(7,0);
 
-    const ompl::base::CompoundState* s = dynamic_cast<const ompl::base::CompoundState*> (state);
-
-    init_r_arm[2] = (*(s->as<VectorState>(0)))[6];
+    init_r_arm[2] = state->as<VectorState>()->values[6];
 
     LeftContArmState l_arm(l_arm_init);
     RightContArmState r_arm(init_r_arm);
 
-    obj_state.x((*(s->as<VectorState>(0)))[0]);
-    obj_state.y((*(s->as<VectorState>(0)))[1]);
-    obj_state.z((*(s->as<VectorState>(0)))[2]);
-    obj_state.roll((*(s->as<VectorState>(0)))[3]);
-    obj_state.pitch((*(s->as<VectorState>(0)))[4]);
-    obj_state.yaw((*(s->as<VectorState>(0)))[5]);
-    base.z((*(s->as<VectorState>(0)))[8]);
-    base.x(s->as<SE2State>(1)->getX());
-    base.y(s->as<SE2State>(1)->getY());
-    base.theta(s->as<SE2State>(1)->getYaw());
+    obj_state.x(state->as<VectorState>()->values[0]);
+    obj_state.y(state->as<VectorState>()->values[1]);
+    obj_state.z(state->as<VectorState>()->values[2]);
+    obj_state.roll(state->as<VectorState>()->values[3]);
+    obj_state.pitch(state->as<VectorState>()->values[4]);
+    obj_state.yaw(state->as<VectorState>()->values[5]);
+    base.z(state->as<VectorState>()->values[8]);
+    base.x(state->as<VectorState>()->values[9]);
+    base.y(state->as<VectorState>()->values[10]);
+    base.theta(state->as<VectorState>()->values[11]);
 
     RobotState seed_state(base, r_arm, l_arm);
     RobotPosePtr final_state;
@@ -101,5 +99,4 @@ bool omplFullBodyMotionValidator::convertFullState(const ompl::base::State* stat
 
     robot_state = *final_state;
     return true;
-
 }
