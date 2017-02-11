@@ -82,6 +82,9 @@ namespace monolithic_pr2_planner {
             void getGoalHeuristic(const GraphStatePtr& state,
                 std::unique_ptr<stringintmap>& values);
 
+            // Get the admissible base heuristic map
+            void get2DHeuristicMap(std::vector<std::vector<int>>& heur_map);
+
             // MHA stuff
 
             // Takes in the base heuristic id, and samples the circle for

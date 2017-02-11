@@ -19,7 +19,7 @@ int main(int argc, char** argv){
   monolithic_pr2_planner_node::GetMobileArmPlan::Request req;
   monolithic_pr2_planner_node::GetMobileArmPlan::Response res;
 
-  req.use_ompl = false;
+  req.use_ompl = true;
 
   // Defaults
   req.mha_type = mha_planner::MHAType::ORIGINAL;

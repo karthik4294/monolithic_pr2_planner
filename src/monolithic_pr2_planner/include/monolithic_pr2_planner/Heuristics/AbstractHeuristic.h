@@ -19,6 +19,9 @@ namespace monolithic_pr2_planner {
             virtual int getGoalHeuristic(GraphStatePtr state) = 0;
             virtual void setGoal(GoalState& state) = 0;
 
+            // get 2D heuristic map
+            virtual void getGoalHeuristicMap(std::vector<std::vector<int>>& heur_map) {};
+
             // For 3D heuristics that need the obstacles - this function has to be implemented for the heuristic to receive the call for obstacle grid update.
             virtual void update3DHeuristicMap() {};
 

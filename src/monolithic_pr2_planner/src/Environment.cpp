@@ -11,6 +11,8 @@
 #include <algorithm>
 #include <cassert>
 
+#include <fstream>
+
 #define GOAL_STATE 1
 #define START_STATE 0
 
@@ -27,8 +29,8 @@ Environment::Environment(ros::NodeHandle nh, bool learn_phase)
         m_min_heur(INFINITECOST),
         m_learn_phase(learn_phase),
         m_use_new_heuristics(false),
-        m_num_trajs(25),
-        m_traj_ts(1000),
+        m_num_trajs(1),
+        m_traj_ts(10),
         m_alpha(0.01),
         m_explr(1.0) {
         m_param_catalog.fetch(nh);
@@ -473,13 +475,13 @@ Trajectory Environment::GenerateTraj(int sourceStateID){
     }
 
     // Don't retrace states while generating traj(not sure about this though)
-    if(std::find(traj_ids.begin(), traj_ids.end(), successor->id()) != traj_ids.end()){
-        ROS_WARN("State exists");
-        // mod_p[num] = 0.0;
-        // f_action_ids.erase(std::remove(f_action_ids.begin(), f_action_ids.end(), num), f_action_ids.end() );
-        // distribution = GetDistribution(mod_p);
-        continue;
-    }
+    // if(std::find(traj_ids.begin(), traj_ids.end(), successor->id()) != traj_ids.end()){
+    //     ROS_WARN("State exists");
+    //     // mod_p[num] = 0.0;
+    //     // f_action_ids.erase(std::remove(f_action_ids.begin(), f_action_ids.end(), num), f_action_ids.end() );
+    //     // distribution = GetDistribution(mod_p);
+    //     continue;
+    // }
 
     // visualize the action
     successor->robot_pose().visualize();
@@ -954,7 +956,6 @@ bool Environment::setStartGoal(SearchRequestPtr search_request,
     obj_state.printToInfo(SEARCH_LOG);
     // start_pose.visualize();
 
-
     m_goal = search_request->createGoalState();
 
     if (m_hash_mgr->size() < 2){
@@ -974,6 +975,22 @@ bool Environment::setStartGoal(SearchRequestPtr search_request,
 
     // informs the heuristic about the goal
     m_heur_mgr->setGoal(*m_goal);
+
+    // get 2D heuristic map
+    std::vector<std::vector<int>> heur_map;
+    m_heur_mgr->get2DHeuristicMap(heur_map);
+
+    // write heur map to file
+    std::ofstream myFile("/home/karthik/heur_map.txt");
+
+    for(int i = 0; i < heur_map.size(); i++) {
+      for(int j = 0; j < heur_map[0].size(); j++) {
+        myFile << heur_map[i][j] << ",";
+      }
+      myFile << "\n";
+    }
+
+    myFile.close();
 
     return true;
 }

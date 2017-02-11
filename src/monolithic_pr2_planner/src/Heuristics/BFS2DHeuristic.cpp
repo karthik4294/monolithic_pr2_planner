@@ -101,6 +101,28 @@ int BFS2DHeuristic::getGoalHeuristic(GraphStatePtr state){
     return getCostMultiplier()*cost;
 }
 
+void BFS2DHeuristic::getGoalHeuristicMap(std::vector<std::vector<int>>& heur_map){
+
+    int cost = INFINITECOST;
+
+    int dimX, dimY, dimZ;
+    m_occupancy_grid->getGridSize(dimX, dimY, dimZ);
+    heur_map.resize(dimX, std::vector<int>(dimY, 0));
+
+    // Run through all 2D base cells and capture the heuristic
+    for(int i = 0; i < heur_map.size(); i++ ) {
+        for(int j = 0; j < heur_map[0].size(); j++) {
+            cost = m_gridsearch->getlowerboundoncostfromstart_inmm(i,j);
+                
+            if (cost < 0){
+                cost = INFINITECOST;
+            }
+
+            heur_map[i][j] = getCostMultiplier()*cost;
+        }
+    }
+}
+
 void BFS2DHeuristic::visualizeCenter(int x, int y) {
     return; //MIKE: disabled this visualization because it makes my rviz cry
     ROS_DEBUG_NAMED(HEUR_LOG, "[BFS2DHeuristic] Visualizing %d %d,", x, y);

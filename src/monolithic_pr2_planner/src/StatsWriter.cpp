@@ -36,12 +36,14 @@ void StatsWriter::write(int trial_id, RRTData data){
     stringstream ss;
     if (m_planner_id == PRM_P)
         ss << m_current_path.str().c_str() << "prm_" << std::setfill('0') << std::setw(2) << trial_id << ".stats";
-    if (m_planner_id == RRT)
+    if (m_planner_id == RRTV)
         ss << m_current_path.str().c_str() << "rrt_" << std::setfill('0') << std::setw(2) << trial_id << ".stats";
     if (m_planner_id == RRTSTAR)
         ss << m_current_path.str().c_str() << "rrtstar_" << std::setfill('0') << std::setw(2) << trial_id << ".stats";
     if (m_planner_id == RRTSTARFIRSTSOL)
       ss << m_current_path.str().c_str() << "rrtstarfirstsol_" << std::setfill('0') << std::setw(2) << trial_id << ".stats";
+    if (m_planner_id == RRTC)
+      ss << m_current_path.str().c_str() << "rrtconnect_" << std::setfill('0') << std::setw(2) << trial_id << ".stats";
     ROS_DEBUG_NAMED(HEUR_LOG, "Opening file : %s", ss.str().c_str());
     FILE* stats = fopen(ss.str().c_str(), "w");
     if (data.planned){
@@ -49,12 +51,14 @@ void StatsWriter::write(int trial_id, RRTData data){
         stringstream ss2;
         if (m_planner_id == PRM_P)
             ss2 << m_current_path.str().c_str() << "prm_" << std::setfill('0') << std::setw(2) << trial_id << ".path";
-        if (m_planner_id == RRT)
+        if (m_planner_id == RRTV)
             ss2 << m_current_path.str().c_str() << "rrt_" << std::setfill('0') << std::setw(2) << trial_id << ".path";
         if (m_planner_id == RRTSTAR)
             ss2 << m_current_path.str().c_str() << "rrtstar_" << std::setfill('0') << std::setw(2) << trial_id << ".path";
         if (m_planner_id == RRTSTARFIRSTSOL)
             ss2 << m_current_path.str().c_str() << "rrtstarfirstsol_" << std::setfill('0') << std::setw(2) << trial_id << ".path";
+        if (m_planner_id == RRTC)
+            ss2 << m_current_path.str().c_str() << "rrtconnect_" << std::setfill('0') << std::setw(2) << trial_id << ".path";
         FILE* path = fopen(ss2.str().c_str(), "w");
         for (size_t i=0; i < data.robot_state.size(); i++){
             vector<double> l_arm;

@@ -18,6 +18,7 @@ namespace monolithic_pr2_planner {
             void setGoal(GoalState& state);
             void loadMap(const std::vector<unsigned char>& data);
             int getGoalHeuristic(GraphStatePtr state);
+            void getGoalHeuristicMap(std::vector<std::vector<int>>& heur_map);
             void update2DHeuristicMap(const std::vector<unsigned char>& data);
 
             // Set radius for the circle around the goal for which the

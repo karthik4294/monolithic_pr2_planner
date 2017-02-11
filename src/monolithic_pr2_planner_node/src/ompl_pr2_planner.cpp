@@ -88,20 +88,29 @@ OMPLPR2Planner::OMPLPR2Planner(const CSpaceMgrPtr& cspace, int planner_id):
     m_collision_checker = new omplFullBodyCollisionChecker(si);
     m_collision_checker->initialize(cspace, init_l_arm);
 
+    m_motion_validator = new omplFullBodyMotionValidator(si);
+    m_motion_validator->initialize(cspace, init_l_arm);
+
     ompl::base::StateValidityChecker* temp2 = m_collision_checker;
     si->setStateValidityChecker(ompl::base::StateValidityCheckerPtr(temp2));
     si->setStateValidityCheckingResolution(0.002/si->getMaximumExtent());
+    
+    ompl::base::MotionValidator* temp3 = m_motion_validator;
+    si->setMotionValidator(ompl::base::MotionValidatorPtr(temp3));
+
     si->setup();
 
     //Define a ProblemDefinition (a start/goal pair)
     pdef = new ompl::base::ProblemDefinition(si);
 
-    if (planner_id == RRT)
-        planner = new ompl::geometric::RRTConnect(si);
+    if (planner_id == RRTV)
+        planner = new ompl::geometric::RRT(si);
     else if (planner_id == PRM_P)
         planner = new ompl::geometric::PRM(si);
     else if (planner_id == RRTSTAR || planner_id == RRTSTARFIRSTSOL)
         planner = new ompl::geometric::RRTstar(si);
+    else if (planner_id == RRTC)
+        planner = new ompl::geometric::RRTConnect(si);
     else
         ROS_ERROR("invalid planner id!");
 
@@ -215,10 +224,12 @@ bool OMPLPR2Planner::planPathCallback(SearchRequestParams& search_request, int t
     StatsWriter& m_stats_writer){
     if (m_planner_id == PRM_P)
         ROS_INFO("running PRM planner!");
-    if (m_planner_id == RRT)
+    if (m_planner_id == RRTV)
         ROS_INFO("running RRT planner!");
     if (m_planner_id == RRTSTAR)
         ROS_INFO("running RRTStar planner!");
+    if (m_planner_id == RRTC)
+        ROS_INFO("running RRTC planner!");
     planner->clear();
     planner->getProblemDefinition()->clearSolutionPaths();
     planner->as<ompl::geometric::PRM>()->clearQuery();

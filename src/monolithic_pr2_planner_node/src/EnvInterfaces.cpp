@@ -361,7 +361,7 @@ bool EnvInterfaces::runMHAPlanner(int planner_type,
   if (req.use_ompl) {
     ROS_INFO("rrt init");
     RobotState::setPlanningMode(PlanningModes::RIGHT_ARM_MOBILE);
-    m_rrt.reset(new OMPLPR2Planner(m_env->getCollisionSpace(), RRT));
+    m_rrt.reset(new OMPLPR2Planner(m_env->getCollisionSpace(), RRTV));
     ROS_INFO("rrt check request");
 
     if (!m_rrt->checkRequest(*search_request)) {
@@ -502,7 +502,7 @@ bool EnvInterfaces::runARAPlanner(int planner_type,
   if (req.use_ompl) {
     ROS_INFO("rrt init");
     RobotState::setPlanningMode(PlanningModes::RIGHT_ARM_MOBILE);
-    m_rrt.reset(new OMPLPR2Planner(m_env->getCollisionSpace(), RRT));
+    m_rrt.reset(new OMPLPR2Planner(m_env->getCollisionSpace(), RRTV));
     ROS_INFO("rrt check request");
 
     if (!m_rrt->checkRequest(*search_request)) {
@@ -586,7 +586,7 @@ bool EnvInterfaces::planPathCallback(GetMobileArmPlan::Request &req,
 
   Eigen::MatrixXd theta = Eigen::MatrixXd::Zero(28, 1);
 
-  for(int i = 0; i < 10; i++) {
+  for(int i = 0; i < 1; i++) {
     SearchRequestParamsPtr search_request = make_shared<SearchRequestParams>();
     search_request->initial_epsilon = req.initial_eps;
     search_request->final_epsilon = req.final_eps;

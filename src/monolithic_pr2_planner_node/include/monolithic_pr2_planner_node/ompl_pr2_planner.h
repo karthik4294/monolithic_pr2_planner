@@ -9,10 +9,12 @@
 #include <ompl/base/StateValidityChecker.h>
 #include <ompl/base/objectives/PathLengthOptimizationObjective.h>
 #include <ompl/geometric/planners/rrt/RRTConnect.h>
+#include <ompl/geometric/planners/rrt/RRT.h>
 #include <ompl/geometric/planners/prm/PRM.h>
 #include <ompl/geometric/planners/rrt/RRTstar.h>
 #include <ompl/base/goals/GoalState.h>
 #include <monolithic_pr2_planner_node/ompl_collision_checker.h>
+#include <monolithic_pr2_planner_node/ompl_motion_validator.h>
 #include <memory>
 #include <monolithic_pr2_planner/CollisionSpaceMgr.h>
 #include <monolithic_pr2_planner/StateReps/RobotState.h>
@@ -25,10 +27,11 @@ typedef ompl::base::SE2StateSpace::StateType SE2State;
 typedef ompl::base::ScopedState<ompl::base::CompoundStateSpace> FullState;
 typedef monolithic_pr2_planner_node::GetMobileArmPlan::Request NodeRequest;
 
-#define RRT 1
+#define RRTV 1
 #define PRM_P 2
 #define RRTSTAR 3
 #define RRTSTARFIRSTSOL 4
+#define RRTC 5
 class OMPLPR2Planner{
     public:
         OMPLPR2Planner(const monolithic_pr2_planner::CSpaceMgrPtr& cspace, int planner_id);
@@ -46,6 +49,7 @@ class OMPLPR2Planner{
         ompl::base::Planner* planner;
         ompl::geometric::PathSimplifier* pathSimplifier;
         omplFullBodyCollisionChecker* m_collision_checker;
+        omplFullBodyMotionValidator* m_motion_validator;
         // StatsWriter m_stats_writer;
         int m_planner_id;
         double m_allocated_planning_time;

@@ -429,6 +429,11 @@ void HeuristicMgr::getGoalHeuristic(const GraphStatePtr& state, std::unique_ptr<
     }
 }
 
+void HeuristicMgr::get2DHeuristicMap(std::vector<std::vector<int>>& heur_map) 
+{
+    m_heuristics[m_heuristic_map["admissible_base"]]->getGoalHeuristicMap(heur_map);
+}
+
 bool HeuristicMgr::checkIKAtPose(int g_x, int g_y, RobotPosePtr& final_pose){
     DiscObjectState state = m_goal.getObjectState(); 
     int center_x = state.x();
