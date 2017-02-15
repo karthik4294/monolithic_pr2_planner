@@ -6,9 +6,8 @@ project(monolithic_pr2_planner_node)
 
 # Load catkin and all dependencies required for this package
 # TODO: remove all from COMPONENTS that are not catkin packages.
-#find_package(ompl REQUIRED)
-find_package(catkin REQUIRED COMPONENTS roscpp geometry_msgs monolithic_pr2_planner leatherman pcl_ros geometry_msgs sensor_msgs arm_navigation_msgs costmap_2d
-                             sbpl_manipulation_components_pr2 interactive_markers sbpl_mha message_generation pviz tf2 pcl_conversions gridmap_2d)
+find_package(ompl REQUIRED)
+find_package(catkin REQUIRED COMPONENTS roscpp geometry_msgs monolithic_pr2_planner leatherman pcl_ros geometry_msgs sensor_msgs arm_navigation_msgs costmap_2d sbpl_manipulation_components_pr2 interactive_markers sbpl_mha message_generation pviz tf2 pcl_conversions gridmap_2d)
 find_package(orocos_kdl)
 #uncomment if you have defined services
 add_service_files(
@@ -27,8 +26,8 @@ catkin_package(
     DEPENDS roscpp geometry_msgs costmap_2d sbpl_manipulation_components_pr2 interactive_markers
              orocos_kdl
              CATKIN_DEPENDS pcl_conversions tf2 message_runtime pviz sbpl_manipulation_components_pr2 monolithic_pr2_planner leatherman pcl_ros  geometry_msgs sensor_msgs arm_navigation_msgs sbpl_mha gridmap_2d# TODO
-    INCLUDE_DIRS include ${catkin_INCLUDE_DIRS} ${ompl_INCLUDE_DIRS}# TODO include
-    LIBRARIES ${catkin_LIBRARIES} ${ompl_LIBRARIES} # TODO
+    INCLUDE_DIRS include ${catkin_INCLUDE_DIRS} # TODO include
+    LIBRARIES ${catkin_LIBRARIES} # TODO
 )
 
 find_package(OpenCV REQUIRED)
@@ -55,16 +54,16 @@ SET(CMAKE_CXX_FLAGS "-std=c++0x")
 
 # find_package(Boost 1.46.0 COMPONENTS thread system filesystem REQUIRED)
 find_package(PkgConfig REQUIRED)
-pkg_check_modules(ompl REQUIRED ompl)
 include_directories(${ompl_INCLUDE_DIRS} ${tf2_INCLUDE_DIRS} ${pcl_conversions_INCLUDE_DIRS})
-link_directories(${ompl_LIBRARY_DIRS} )
+#link_directories(${ompl_LIBRARY_DIRS} )
 
 #set the default path for built executables to the "bin" directory
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 #set the default path for built libraries to the "lib" directory
 set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 
-include_directories(${Boost_INCLUDE_DIRS} include ${catkin_INCLUDE_DIRS} ${ompl_INCLUDE_DIRS} ${orocos_kdl_INCLUDE_DIRS} ${OpenCV}_INCLUDE_DIRS)
+#include_directories(${Boost_INCLUDE_DIRS} include ${catkin_INCLUDE_DIRS} ${ompl_INCLUDE_DIRS} ${orocos_kdl_INCLUDE_DIRS} ${OpenCV}_INCLUDE_DIRS)
+include_directories(${Boost_INCLUDE_DIRS} include ${catkin_INCLUDE_DIRS} ${orocos_kdl_INCLUDE_DIRS} ${OpenCV}_INCLUDE_DIRS)
 #target_link_libraries(${PROJECT_NAME} ${Boost_LIBRARIES} ${catkin_LIBRARIES} ${ompl_LIBRARIES})
 
 add_executable(node src/node.cpp src/EnvInterfaces.cpp #(Not required for simulation?)
@@ -82,17 +81,17 @@ add_executable(policy_learner src/learn_policy.cpp src/EnvInterfaces.cpp #(Not r
                         )
 
 # TODO I don't know why I have to list the packages explicitly.
-target_link_libraries(node monolithic_pr2_planner ${tf2_LIBRARIES} bfs3d ompl ikfast_pr2 sbpl_manipulation_components_pr2 pviz ompl pr2_collision_checker ${catkin_LIBRARIES} ${ompl_LIBRARIES} ${orocos_kdl_LIBRARIES})
+target_link_libraries(node monolithic_pr2_planner ${tf2_LIBRARIES} bfs3d ikfast_pr2 sbpl_manipulation_components_pr2 pviz pr2_collision_checker ${catkin_LIBRARIES} ${OMPL_LIBRARIES} ${orocos_kdl_LIBRARIES})
 
-target_link_libraries(policy_learner monolithic_pr2_planner ${tf2_LIBRARIES} bfs3d ompl ikfast_pr2 sbpl_manipulation_components_pr2 pviz ompl pr2_collision_checker ${catkin_LIBRARIES} ${ompl_LIBRARIES} ${orocos_kdl_LIBRARIES})
+target_link_libraries(policy_learner monolithic_pr2_planner ${tf2_LIBRARIES} bfs3d ikfast_pr2 sbpl_manipulation_components_pr2 pviz pr2_collision_checker ${catkin_LIBRARIES} ${OMPL_LIBRARIES} ${orocos_kdl_LIBRARIES})
 
-add_executable(testPlanningRequest src/testPlanningRequest.cpp)
+add_executable(testPlanningRequest src/testPlanningRequest.cpp) 
 target_link_libraries(testPlanningRequest monolithic_pr2_planner)
 
 add_executable(interactFullBodyPlanner src/interactFullBodyPlanner.cpp)
 add_dependencies(interactFullBodyPlanner ${catkin_EXPORTED_TARGETS})
 # TODO I don't know why I have to list the packages explicitly.
-target_link_libraries(interactFullBodyPlanner monolithic_pr2_planner sbpl_manipulation_components_pr2 pviz ${catkin_LIBRARIES} ${ompl_LIBRARIES})
+target_link_libraries(interactFullBodyPlanner monolithic_pr2_planner sbpl_manipulation_components_pr2 pviz ${catkin_LIBRARIES})
 
 add_executable(testExecute src/testExecute.cpp)
 add_dependencies(testExecute ${catkin_EXPORTED_TARGETS})
