@@ -361,7 +361,7 @@ bool EnvInterfaces::runMHAPlanner(int planner_type,
   if (req.use_ompl) {
     ROS_INFO("rrt init");
     RobotState::setPlanningMode(PlanningModes::RIGHT_ARM_MOBILE);
-    m_rrt.reset(new OMPLPR2Planner(m_env->getCollisionSpace(), RRTV));
+    m_rrt.reset(new OMPLPR2Planner(m_env->getCollisionSpace(), RRT_NUM));
     ROS_INFO("rrt check request");
 
     if (!m_rrt->checkRequest(*search_request)) {
@@ -500,22 +500,19 @@ bool EnvInterfaces::runARAPlanner(int planner_type,
   }
 
   if (req.use_ompl) {
-    ROS_INFO("rrt init");
+    ROS_INFO("OMPL Inititalize");
     RobotState::setPlanningMode(PlanningModes::RIGHT_ARM_MOBILE);
-    m_rrt.reset(new OMPLPR2Planner(m_env->getCollisionSpace(), RRTV));
-    ROS_INFO("rrt check request");
+    m_rrt.reset(new OMPLPR2Planner(m_env->getCollisionSpace(), RRT_NUM));
 
     if (!m_rrt->checkRequest(*search_request)) {
       ROS_WARN("bad start goal for ompl");
     }
 
-    ROS_INFO("rrt plan");
     m_rrt->setPlanningTime(req.allocated_planning_time);
     double t0 = ros::Time::now().toSec();
     bool found_path = m_rrt->planPathCallback(*search_request, counter,
                                               m_stats_writer);
     double t1 = ros::Time::now().toSec();
-    ROS_INFO("rrt done planning");
 
     res.stats_field_names.clear();
     res.stats_field_names.push_back("total_plan_time");

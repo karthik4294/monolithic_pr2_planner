@@ -93,7 +93,6 @@ void addRandomObstacles(pcl::PointCloud<pcl::PointXYZ>::Ptr pclCloud, int
 
     double surfaceSizeZ = 0.8;
 
-
     double obstacleBoundsXMin = 3.5;
     double obstacleBoundsXMax = 6;
 
@@ -274,11 +273,17 @@ vector<Eigen::Vector3d> getVoxelsFromFile(std::string filename){
     // addCuboid(pclCloud, 5.348199056716729, 2.1079581496994748, 0.8, 0.1, 0.2, 0.3,true);
 
     // Doorway
-    addCuboid(pclCloud, 5, 0, 0, 0.05, 1.8, 1.8, true);
-    addCuboid(pclCloud, 5, 2.85, 0, 0.05, 2.2, 1.8, true);
-    addCuboid(pclCloud, 5, 2.85, 0, 1.00, 0.05, 1.8, true);
+    // addCuboid(pclCloud, 5, 0, 0, 0.05, 1.8, 1.8, true);
+    // addCuboid(pclCloud, 5, 2.85, 0, 0.05, 2.2, 1.8, true);
+    // addCuboid(pclCloud, 5, 2.85, 0, 1.00, 0.05, 1.8, true);
+
     // head of doorway; don't add this.
     // addCuboid(pclCloud, 5, 2, 1.6, 0.05, 1, 1.8, true);
+
+    //(Karthik) Making doorway bigger for PPMA experiments
+    addCuboid(pclCloud, 5, 0, 0, 0.05, 1.5, 1.8, true);
+    addCuboid(pclCloud, 5, 2.85, 0, 0.05, 2.2, 1.8, true);
+    addCuboid(pclCloud, 5, 2.85, 0, 1.00, 0.05, 1.8, true);
 
     // Extending protrusion near table
     addCuboid(pclCloud, 2.8, 4.5, 0.60, 0.05, 0.5, 1.15, true);

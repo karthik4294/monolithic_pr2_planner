@@ -2,11 +2,11 @@
 
 using namespace monolithic_pr2_planner;
 using namespace std;
-
 void omplFullBodyMotionValidator::initialize(CSpaceMgrPtr cspace, vector<double> l_arm){
     m_cspace = cspace;
     l_arm_init = l_arm;
 }
+
 
 bool omplFullBodyMotionValidator::checkMotion(const ompl::base::State* nstate, const ompl::base::State* dstate, std::pair<ompl::base::State*, double>& last_valid) const {
 

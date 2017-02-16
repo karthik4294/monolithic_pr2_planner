@@ -8,11 +8,14 @@
 #include <vector>
 #include <sstream>
 
-#define RRTV 1
-#define PRM_P 2
-#define RRTSTAR 3
-#define RRTSTARFIRSTSOL 4
-#define RRTC 5
+#define RRT_NUM 0
+#define PRM_P_NUM 1
+#define RRTCONNECT_NUM 2 
+#define RRTSTAR_NUM 3
+#define RRTSTARFIRSTSOL_NUM 4
+#define BITSTAR_NUM 5 
+#define BITSTARFIRSTSOL_NUM 6
+
 
 struct RRTData {
     bool planned;

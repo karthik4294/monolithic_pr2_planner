@@ -27,37 +27,37 @@ StatsWriter::StatsWriter(int planner_id):m_planner_id(planner_id){
 }
 
 void StatsWriter::write(int trial_id, RRTData data){
-    //if (m_planner_id == PRM_P)
+    //if (m_planner_id == PRM_P_NUM)
     //    ROS_INFO("writing PRM stats");
     //if (m_planner_id == RRT)
     //    ROS_INFO("writing RRT stats");
     //if (m_planner_id == RRTSTAR)
     //    ROS_INFO("writing RRTStar stats");
     stringstream ss;
-    if (m_planner_id == PRM_P)
+    if (m_planner_id == PRM_P_NUM)
         ss << m_current_path.str().c_str() << "prm_" << std::setfill('0') << std::setw(2) << trial_id << ".stats";
-    if (m_planner_id == RRTV)
+    if (m_planner_id == RRT_NUM)
         ss << m_current_path.str().c_str() << "rrt_" << std::setfill('0') << std::setw(2) << trial_id << ".stats";
-    if (m_planner_id == RRTSTAR)
+    if (m_planner_id == RRTSTAR_NUM)
         ss << m_current_path.str().c_str() << "rrtstar_" << std::setfill('0') << std::setw(2) << trial_id << ".stats";
-    if (m_planner_id == RRTSTARFIRSTSOL)
+    if (m_planner_id == RRTSTARFIRSTSOL_NUM)
       ss << m_current_path.str().c_str() << "rrtstarfirstsol_" << std::setfill('0') << std::setw(2) << trial_id << ".stats";
-    if (m_planner_id == RRTC)
+    if (m_planner_id == RRTCONNECT_NUM)
       ss << m_current_path.str().c_str() << "rrtconnect_" << std::setfill('0') << std::setw(2) << trial_id << ".stats";
     ROS_DEBUG_NAMED(HEUR_LOG, "Opening file : %s", ss.str().c_str());
     FILE* stats = fopen(ss.str().c_str(), "w");
     if (data.planned){
         fprintf(stats, "%f %f %lu\n", data.plan_time, data.shortcut_time, data.path_length);
         stringstream ss2;
-        if (m_planner_id == PRM_P)
+        if (m_planner_id == PRM_P_NUM)
             ss2 << m_current_path.str().c_str() << "prm_" << std::setfill('0') << std::setw(2) << trial_id << ".path";
-        if (m_planner_id == RRTV)
+        if (m_planner_id == RRT_NUM)
             ss2 << m_current_path.str().c_str() << "rrt_" << std::setfill('0') << std::setw(2) << trial_id << ".path";
-        if (m_planner_id == RRTSTAR)
+        if (m_planner_id == RRTSTAR_NUM)
             ss2 << m_current_path.str().c_str() << "rrtstar_" << std::setfill('0') << std::setw(2) << trial_id << ".path";
-        if (m_planner_id == RRTSTARFIRSTSOL)
+        if (m_planner_id == RRTSTARFIRSTSOL_NUM)
             ss2 << m_current_path.str().c_str() << "rrtstarfirstsol_" << std::setfill('0') << std::setw(2) << trial_id << ".path";
-        if (m_planner_id == RRTC)
+        if (m_planner_id == RRTCONNECT_NUM)
             ss2 << m_current_path.str().c_str() << "rrtconnect_" << std::setfill('0') << std::setw(2) << trial_id << ".path";
         FILE* path = fopen(ss2.str().c_str(), "w");
         for (size_t i=0; i < data.robot_state.size(); i++){
