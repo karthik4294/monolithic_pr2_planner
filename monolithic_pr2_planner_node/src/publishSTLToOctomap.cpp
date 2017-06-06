@@ -1,6 +1,6 @@
 #include <sbpl_geometry_utils/Voxelizer.h>
 #include <pcl/point_types.h>
-#include <pcl/ros/conversions.h>
+#include <pcl_conversions/pcl_conversions.h>
 #include <sensor_msgs/PointCloud2.h>
 #include <std_msgs/Float32MultiArray.h>
 #include <vector>

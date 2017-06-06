@@ -4,6 +4,7 @@
 #include <ros/ros.h>
 #include <boost/shared_ptr.hpp>
 #include <geometry_msgs/Pose.h>
+#include <log4cxx/logger.h>
 
 using namespace monolithic_pr2_planner;
 using namespace boost;
