@@ -1,19 +1,20 @@
+
 # Catkin User Guide: http://www.ros.org/doc/groovy/api/catkin/html/user_guide/user_guide.html
 # Catkin CMake Standard: http://www.ros.org/doc/groovy/api/catkin/html/user_guide/standards.html
 cmake_minimum_required(VERSION 2.8.3)
 project(monolithic_pr2_planner)
 # Load catkin and all dependencies required for this package
 # TODO: remove all from COMPONENTS that are not catkin packages.
-find_package(catkin REQUIRED COMPONENTS pr2_collision_checker angles pviz bfs3d ikfast_pr2 nav_msgs moveit_msgs costmap_2d sbpl rostest)
-#find_package(sbpl_mha)
+find_package(catkin REQUIRED COMPONENTS pr2_collision_checker angles pviz bfs3d ikfast_pr2 nav_msgs moveit_msgs costmap_2d sbpl_ppma rostest)
+#find_package(sbpl)
 # CATKIN_MIGRATION: removed during catkin migration
 
 # catkin_package parameters: http://ros.org/doc/groovy/api/catkin/html/dev_guide/generated_cmake_api.html#catkin-package
 # TODO: fill in what other packages will need to use this package
 catkin_package(
     DEPENDS pr2_collision_checker angles pviz bfs3d ikfast_pr2 nav_msgs moveit_msgs costmap_2d rostest
-    CATKIN_DEPENDS sbpl #sbpl_mha # TODO
-    INCLUDE_DIRS include ${catkin_INCLUDE_DIRS} ${sbpl} #${sbpl_mha} #${sbpl_INCLUDE_DIRS}# TODO include
+    CATKIN_DEPENDS sbpl_ppma # TODO
+    INCLUDE_DIRS include ${catkin_INCLUDE_DIRS} ${sbpl_ppma}#${sbpl_INCLUDE_DIRS}# TODO include
     LIBRARIES ${catkin_LIBRARIES}# TODO
 )
 
@@ -35,7 +36,7 @@ catkin_package(
 #  Release        : w/o debug symbols, w/ optimization
 #  RelWithDebInfo : w/ debug symbols, w/ optimization
 #  MinSizeRel     : w/o debug symbols, w/ optimization, stripped binaries
-set(ROS_BUILD_TYPE Release)
+set(CATKIN_BUILD_TYPE Release)
 
 
 # CATKIN_MIGRATION: removed during catkin migration
@@ -46,8 +47,8 @@ SET(CMAKE_CXX_FLAGS "-std=c++0x")
 
 # find_package(Boost 1.46.0 COMPONENTS thread system filesystem REQUIRED)
 
-add_definitions(-DUSE_IKFAST_SOLVER)
-#add_definitions(-DUSE_KDL_SOLVER)
+#add_definitions(-DUSE_IKFAST_SOLVER)
+add_definitions(-DUSE_KDL_SOLVER)
 
 # Depend on sbpl-ros package for now
 #find_package(PkgConfig REQUIRED)

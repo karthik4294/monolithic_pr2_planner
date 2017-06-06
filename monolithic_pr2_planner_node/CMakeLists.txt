@@ -1,3 +1,4 @@
+
 # Catkin User Guide: http://www.ros.org/doc/groovy/api/catkin/html/user_guide/user_guide.html
 # Catkin CMake Standard: http://www.ros.org/doc/groovy/api/catkin/html/user_guide/standards.html
 
@@ -7,30 +8,30 @@ project(monolithic_pr2_planner_node)
 # Load catkin and all dependencies required for this package
 # TODO: remove all from COMPONENTS that are not catkin packages.
 #find_package(ompl REQUIRED)
-find_package(catkin REQUIRED COMPONENTS roscpp geometry_msgs monolithic_pr2_planner leatherman pcl_ros orocos_kdl geometry_msgs sensor_msgs arm_navigation_msgs costmap_2d sbpl_manipulation_components_pr2 interactive_markers sbpl message_generation pviz tf2)
-#find_package(sbpl_mha)
-
+find_package(catkin REQUIRED COMPONENTS roscpp geometry_msgs monolithic_pr2_planner leatherman pcl_ros geometry_msgs sensor_msgs arm_navigation_msgs costmap_2d sbpl_manipulation_components_pr2 interactive_markers sbpl_ppma message_generation pviz tf2 pcl_conversions gridmap_2d)
+find_package(orocos_kdl)
 #uncomment if you have defined services
 add_service_files(
-  DIRECTORY srv 
-  FILES GetMobileArmPlan.srv
+  DIRECTORY srv
 # TODO: List your msg files here
 )
 
 ## Generate added messages and services with any dependencies listed here
 generate_messages(
-    DEPENDENCIES trajectory_msgs geometry_msgs std_msgs
+    DEPENDENCIES trajectory_msgs geometry_msgs std_msgs 
 )
 
 # catkin_package parameters: http://ros.org/doc/groovy/api/catkin/html/dev_guide/generated_cmake_api.html#catkin-package
 # TODO: fill in what other packages will need to use this package
 catkin_package(
     DEPENDS roscpp geometry_msgs costmap_2d sbpl_manipulation_components_pr2 interactive_markers
-            tf2
-    CATKIN_DEPENDS message_runtime pviz sbpl_manipulation_components_pr2 monolithic_pr2_planner leatherman pcl_ros orocos_kdl geometry_msgs sensor_msgs arm_navigation_msgs sbpl # sbpl_mha # TODO
-    INCLUDE_DIRS include ${catkin_INCLUDE_DIRS} ${ompl_INCLUDE_DIRS}# TODO include
-    LIBRARIES ${catkin_LIBRARIES} ${ompl_LIBRARIES} # TODO
+             orocos_kdl
+             CATKIN_DEPENDS pcl_conversions tf2 message_runtime pviz sbpl_manipulation_components_pr2 monolithic_pr2_planner leatherman pcl_ros  geometry_msgs sensor_msgs arm_navigation_msgs sbpl_ppma gridmap_2d# TODO
+    INCLUDE_DIRS include ${catkin_INCLUDE_DIRS} # TODO include
+    LIBRARIES ${catkin_LIBRARIES} # TODO
 )
+
+#find_package(OpenCV REQUIRED)
 
 # include_directories(include ${Boost_INCLUDE_DIR} ${catkin_INCLUDE_DIRS})
 # CATKIN_MIGRATION: removed during catkin migration
@@ -45,7 +46,7 @@ catkin_package(
 #  Release        : w/o debug symbols, w/ optimization
 #  RelWithDebInfo : w/ debug symbols, w/ optimization
 #  MinSizeRel     : w/o debug symbols, w/ optimization, stripped binaries
-set(ROS_BUILD_TYPE Release)
+set(CATKIN_BUILD_TYPE Release )
 
 # CATKIN_MIGRATION: removed during catkin migration
 # rosbuild_init()
@@ -54,18 +55,16 @@ SET(CMAKE_CXX_FLAGS "-std=c++0x")
 
 # find_package(Boost 1.46.0 COMPONENTS thread system filesystem REQUIRED)
 find_package(PkgConfig REQUIRED)
-find_package(ompl REQUIRED)
-#pkg_check_modules(ompl REQUIRED ompl)
-
-include_directories(${ompl_INCLUDE_DIRS})
-link_directories(${ompl_LIBRARY_DIRS})
+include_directories(${tf2_INCLUDE_DIRS} ${pcl_conversions_INCLUDE_DIRS})
+#link_directories(${ompl_LIBRARY_DIRS} )
 
 #set the default path for built executables to the "bin" directory
 set(EXECUTABLE_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/bin)
 #set the default path for built libraries to the "lib" directory
 set(LIBRARY_OUTPUT_PATH ${PROJECT_SOURCE_DIR}/lib)
 
-include_directories(${Boost_INCLUDE_DIRS} include ${catkin_INCLUDE_DIRS} ${ompl_INCLUDE_DIRS})
+#include_directories(${Boost_INCLUDE_DIRS} include ${catkin_INCLUDE_DIRS} ${orocos_kdl_INCLUDE_DIRS} ${OpenCV}_INCLUDE_DIRS)
+include_directories(${Boost_INCLUDE_DIRS} include ${catkin_INCLUDE_DIRS} ${orocos_kdl_INCLUDE_DIRS} ${OpenCV}_INCLUDE_DIRS)
 #target_link_libraries(${PROJECT_NAME} ${Boost_LIBRARIES} ${catkin_LIBRARIES} ${ompl_LIBRARIES})
 
 add_executable(node src/node.cpp src/EnvInterfaces.cpp #(Not required for simulation?)
@@ -76,7 +75,7 @@ add_executable(node src/node.cpp src/EnvInterfaces.cpp #(Not required for simula
                         )
 
 # TODO I don't know why I have to list the packages explicitly.
-target_link_libraries(node monolithic_pr2_planner bfs3d ikfast_pr2 sbpl_manipulation_components_pr2 pviz pr2_collision_checker ${catkin_LIBRARIES} ${ompl_LIBRARIES} ompl_app_base ompl)
+target_link_libraries(node monolithic_pr2_planner bfs3d ikfast_pr2 sbpl_manipulation_components_pr2 pviz pr2_collision_checker ${catkin_LIBRARIES} ompl ompl_app ompl_app_base)
 
 add_executable(testPlanningRequest src/testPlanningRequest.cpp)
 target_link_libraries(testPlanningRequest monolithic_pr2_planner)
